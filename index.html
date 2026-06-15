@@ -1,0 +1,621 @@
+<!DOCTYPE html>
+<html lang="ms">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#1877F2">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="PostJadual">
+<title>PostJadual – FB Group Scheduler</title>
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon-192.png">
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  :root{
+    --blue:#1877F2;--blue-dark:#1558b0;--bg:#f0f2f5;--card:#fff;
+    --text:#050505;--muted:#65676B;--border:#ddd;--danger:#e41e3f;
+    --green:#42b72a;--radius:8px;--shadow:0 1px 3px rgba(0,0,0,.12)
+  }
+  body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
+  nav{background:var(--blue);color:#fff;padding:0 16px;display:flex;align-items:center;justify-content:space-between;height:56px;position:sticky;top:0;z-index:100;box-shadow:0 2px 8px rgba(0,0,0,.2)}
+  nav h1{font-size:18px;font-weight:700;letter-spacing:-.3px}
+  nav .nav-tabs{display:flex;gap:4px}
+  nav button{background:rgba(255,255,255,.18);border:none;color:#fff;padding:6px 14px;border-radius:20px;cursor:pointer;font-size:13px;font-weight:500;transition:background .15s}
+  nav button.active,nav button:hover{background:rgba(255,255,255,.32)}
+  .container{max-width:680px;margin:0 auto;padding:16px}
+  .card{background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);padding:20px;margin-bottom:16px}
+  .card h2{font-size:16px;font-weight:600;margin-bottom:14px;color:var(--text)}
+  label{display:block;font-size:13px;font-weight:500;color:var(--muted);margin-bottom:4px;margin-top:12px}
+  label:first-child{margin-top:0}
+  input[type=text],input[type=time],input[type=url],select,textarea{
+    width:100%;padding:10px 12px;border:1.5px solid var(--border);border-radius:var(--radius);
+    font-size:14px;font-family:inherit;color:var(--text);background:#fff;
+    transition:border-color .15s;outline:none
+  }
+  input:focus,select:focus,textarea:focus{border-color:var(--blue)}
+  textarea{resize:vertical;min-height:100px;line-height:1.5}
+  .btn{display:inline-flex;align-items:center;gap:6px;padding:10px 18px;border:none;border-radius:var(--radius);font-size:14px;font-weight:600;cursor:pointer;transition:all .15s}
+  .btn-primary{background:var(--blue);color:#fff}
+  .btn-primary:hover{background:var(--blue-dark)}
+  .btn-danger{background:var(--danger);color:#fff}
+  .btn-sm{padding:6px 12px;font-size:13px}
+  .btn-ghost{background:transparent;border:1.5px solid var(--border);color:var(--text)}
+  .btn-ghost:hover{background:#f5f5f5}
+  .btn-green{background:var(--green);color:#fff}
+  .row{display:flex;gap:10px;align-items:flex-end}
+  .row>*{flex:1}
+  .badge{display:inline-block;padding:2px 10px;border-radius:20px;font-size:12px;font-weight:600}
+  .badge-blue{background:#e7f0fd;color:var(--blue)}
+  .badge-green{background:#e6f7e3;color:#1a7f37}
+  .badge-orange{background:#fff3e0;color:#e65100}
+  .badge-red{background:#fde8ec;color:var(--danger)}
+  .schedule-item{border:1.5px solid var(--border);border-radius:var(--radius);padding:14px;margin-bottom:10px;position:relative;transition:border-color .15s}
+  .schedule-item:hover{border-color:var(--blue)}
+  .schedule-item .meta{display:flex;gap:8px;align-items:center;margin-bottom:8px;flex-wrap:wrap}
+  .schedule-item .time{font-size:20px;font-weight:700;color:var(--blue)}
+  .schedule-item .title-text{font-size:14px;font-weight:500}
+  .schedule-item .copy-preview{font-size:13px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;margin-top:4px}
+  .schedule-item .actions{display:flex;gap:6px;margin-top:10px;flex-wrap:wrap}
+  .group-item{display:flex;align-items:center;justify-content:space-between;padding:10px;border:1px solid var(--border);border-radius:var(--radius);margin-bottom:8px}
+  .group-item .group-info{flex:1;min-width:0}
+  .group-item .group-name{font-weight:500;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .group-item .group-url{font-size:12px;color:var(--blue);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .stats-row{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:16px}
+  .stat-card{background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);padding:14px;text-align:center}
+  .stat-card .num{font-size:28px;font-weight:700;color:var(--blue)}
+  .stat-card .lbl{font-size:12px;color:var(--muted);margin-top:2px}
+  .page{display:none}
+  .page.active{display:block}
+  .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#050505;color:#fff;padding:10px 20px;border-radius:24px;font-size:14px;font-weight:500;z-index:999;opacity:0;transition:opacity .25s;pointer-events:none;white-space:nowrap}
+  .toast.show{opacity:1}
+  .empty{text-align:center;padding:40px 20px;color:var(--muted)}
+  .empty svg{margin-bottom:12px;opacity:.4}
+  .copy-box{background:#f7f8fa;border:1.5px solid var(--border);border-radius:var(--radius);padding:14px;font-size:14px;line-height:1.6;position:relative;white-space:pre-wrap;word-break:break-word;margin:8px 0}
+  .file-drop{border:2px dashed var(--border);border-radius:var(--radius);padding:24px;text-align:center;cursor:pointer;color:var(--muted);font-size:14px;transition:border-color .15s}
+  .file-drop:hover{border-color:var(--blue);color:var(--blue)}
+  .section-title{font-size:18px;font-weight:700;margin-bottom:16px}
+  .notif-banner{background:#fff3cd;border:1px solid #ffc107;border-radius:var(--radius);padding:12px 14px;font-size:13px;color:#664d03;margin-bottom:16px;line-height:1.5}
+  .video-thumb{width:100%;max-width:200px;height:120px;background:#000;border-radius:var(--radius);object-fit:cover;margin-top:8px;display:block}
+  details summary{cursor:pointer;font-size:13px;color:var(--blue);font-weight:500;list-style:none;padding:4px 0}
+  details summary::-webkit-details-marker{display:none}
+  details[open] summary{margin-bottom:8px}
+  .checkbox-row{display:flex;align-items:center;gap:10px;padding:8px 10px;border:1px solid var(--border);border-radius:6px;margin-bottom:6px;cursor:pointer}
+  .checkbox-row input{width:16px;height:16px;accent-color:var(--blue)}
+  .pwa-tip{background:linear-gradient(135deg,#e7f0fd,#f0e7fd);border-radius:var(--radius);padding:14px;font-size:13px;line-height:1.6;margin-bottom:16px}
+  @media(max-width:480px){.row{flex-direction:column}.stats-row{grid-template-columns:repeat(3,1fr)}}
+</style>
+</head>
+<body>
+
+<nav>
+  <h1>📅 PostJadual</h1>
+  <div class="nav-tabs">
+    <button class="active" onclick="showPage('dashboard')">Utama</button>
+    <button onclick="showPage('create')">+ Buat</button>
+    <button onclick="showPage('groups')">Kumpulan</button>
+  </div>
+</nav>
+
+<div class="container">
+
+<!-- ===== DASHBOARD ===== -->
+<div id="page-dashboard" class="page active">
+  <div id="pwa-banner" class="pwa-tip" style="display:none">
+    📱 <strong>Tambah ke Home Screen</strong> untuk dapat push notification di iPhone: Safari → butang Share → "Add to Home Screen"
+  </div>
+
+  <div class="stats-row">
+    <div class="stat-card"><div class="num" id="stat-today">0</div><div class="lbl">Posting Hari Ini</div></div>
+    <div class="stat-card"><div class="num" id="stat-total">0</div><div class="lbl">Jumlah Jadual</div></div>
+    <div class="stat-card"><div class="num" id="stat-groups">0</div><div class="lbl">Kumpulan</div></div>
+  </div>
+
+  <div id="notif-status" class="notif-banner" style="display:none"></div>
+
+  <div class="card">
+    <h2>📋 Jadual Hari Ini</h2>
+    <div id="today-list"><div class="empty">Tiada jadual hari ini</div></div>
+  </div>
+
+  <div class="card">
+    <h2>⏳ Akan Datang</h2>
+    <div id="upcoming-list"><div class="empty">Tiada jadual akan datang</div></div>
+  </div>
+</div>
+
+<!-- ===== CREATE POST ===== -->
+<div id="page-create" class="page">
+  <div class="card">
+    <h2>✏️ Buat Posting Baru</h2>
+
+    <label>Nama / Tajuk (untuk rujukan)</label>
+    <input type="text" id="post-title" placeholder="cth: Promosi Ramadan #3">
+
+    <label>Copywriting</label>
+    <textarea id="post-copy" placeholder="Taip atau paste copywriting anda di sini...&#10;&#10;Emoji, link, hashtag — semua boleh ✅"></textarea>
+
+    <label>Video / Gambar (pilihan)</label>
+    <div class="file-drop" id="file-drop" onclick="document.getElementById('file-input').click()">
+      📎 Klik untuk pilih fail video/gambar<br>
+      <small style="font-size:12px;opacity:.7">MP4, MOV, JPG, PNG — akan disimpan untuk download</small>
+    </div>
+    <input type="file" id="file-input" accept="video/*,image/*" style="display:none" onchange="handleFile(this)">
+    <div id="file-preview"></div>
+
+    <label>Tarikh</label>
+    <input type="date" id="post-date">
+
+    <label>Masa Posting</label>
+    <input type="time" id="post-time">
+
+    <label>Kumpulan Sasaran</label>
+    <div id="group-checkboxes">
+      <div style="color:var(--muted);font-size:13px;padding:8px 0">Tiada kumpulan lagi. <span style="color:var(--blue);cursor:pointer" onclick="showPage('groups')">Tambah kumpulan →</span></div>
+    </div>
+    <div style="margin-top:6px;display:flex;gap:8px">
+      <button class="btn btn-ghost btn-sm" onclick="selectAllGroups()">Pilih Semua</button>
+      <button class="btn btn-ghost btn-sm" onclick="clearAllGroups()">Nyahpilih</button>
+    </div>
+
+    <div style="margin-top:18px;display:flex;gap:10px;flex-wrap:wrap">
+      <button class="btn btn-primary" onclick="savePost()">💾 Simpan Jadual</button>
+      <button class="btn btn-ghost" onclick="clearForm()">🗑 Kosongkan</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== GROUPS ===== -->
+<div id="page-groups" class="page">
+  <div class="card">
+    <h2>➕ Tambah Kumpulan</h2>
+    <label>Nama Kumpulan</label>
+    <input type="text" id="grp-name" placeholder="cth: Jualan Online Malaysia">
+    <label>URL Facebook Group</label>
+    <input type="url" id="grp-url" placeholder="https://www.facebook.com/groups/...">
+    <div style="margin-top:14px;display:flex;gap:10px">
+      <button class="btn btn-primary" onclick="addGroup()">Tambah</button>
+    </div>
+
+    <details style="margin-top:16px">
+      <summary>📤 Import dari Excel / CSV</summary>
+      <div style="margin-top:8px">
+        <div class="file-drop" onclick="document.getElementById('excel-input').click()" style="padding:14px">
+          📊 Klik untuk pilih fail Excel atau CSV<br>
+          <small style="font-size:12px;opacity:.7">Lajur: "Nama" dan "URL" (baris pertama = header)</small>
+        </div>
+        <input type="file" id="excel-input" accept=".csv,.xlsx,.xls" style="display:none" onchange="importExcel(this)">
+      </div>
+    </details>
+  </div>
+
+  <div class="card">
+    <h2>📋 Senarai Kumpulan (<span id="grp-count">0</span>)</h2>
+    <div id="group-list"><div class="empty">Tiada kumpulan lagi</div></div>
+  </div>
+</div>
+
+</div><!-- /container -->
+
+<!-- MODAL: Post Action -->
+<div id="modal-backdrop" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:200;overflow-y:auto">
+  <div style="background:#fff;max-width:500px;margin:40px auto 20px;border-radius:12px;overflow:hidden">
+    <div style="background:var(--blue);padding:16px 20px;color:#fff">
+      <div style="font-size:18px;font-weight:700" id="modal-title">Posting</div>
+      <div style="font-size:13px;opacity:.85" id="modal-time"></div>
+    </div>
+    <div style="padding:20px">
+      <div style="font-size:13px;color:var(--muted);margin-bottom:6px;font-weight:500">COPYWRITING</div>
+      <div class="copy-box" id="modal-copy"></div>
+      <button class="btn btn-primary" style="width:100%;justify-content:center;margin-bottom:10px" onclick="copyCopy()">📋 Salin Copywriting</button>
+
+      <div id="modal-video-section" style="display:none;margin-bottom:10px">
+        <div style="font-size:13px;color:var(--muted);margin-bottom:6px;font-weight:500">VIDEO / GAMBAR</div>
+        <button class="btn btn-ghost" style="width:100%;justify-content:center" onclick="downloadMedia()">⬇️ Download Media</button>
+      </div>
+
+      <div style="font-size:13px;color:var(--muted);margin-bottom:8px;font-weight:500;margin-top:4px">KUMPULAN SASARAN</div>
+      <div id="modal-groups"></div>
+
+      <div style="display:flex;gap:8px;margin-top:16px">
+        <button class="btn btn-ghost" style="flex:1;justify-content:center" onclick="closeModal()">Tutup</button>
+        <button class="btn btn-danger btn-sm" onclick="deletePost()" style="flex:0">🗑 Padam</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ===== STATE =====
+let posts = JSON.parse(localStorage.getItem('fb_posts') || '[]');
+let groups = JSON.parse(localStorage.getItem('fb_groups') || '[]');
+let activePostId = null;
+let mediaData = null;
+
+// ===== INIT =====
+document.addEventListener('DOMContentLoaded', ()=>{
+  setDefaultDate();
+  renderDashboard();
+  renderGroups();
+  renderGroupCheckboxes();
+  checkPWA();
+  requestNotifPermission();
+  scheduleChecker();
+});
+
+function setDefaultDate(){
+  const d = new Date();
+  const pad = n=>String(n).padStart(2,'0');
+  document.getElementById('post-date').value = `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+}
+
+// ===== NAVIGATION =====
+function showPage(id){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.getElementById('page-'+id).classList.add('active');
+  document.querySelectorAll('nav button').forEach((b,i)=>{
+    b.classList.remove('active');
+    if(['dashboard','create','groups'][i]===id) b.classList.add('active');
+  });
+  if(id==='dashboard') renderDashboard();
+  if(id==='groups'){renderGroups();renderGroupCheckboxes();}
+  if(id==='create') renderGroupCheckboxes();
+}
+
+// ===== SAVE POST =====
+function savePost(){
+  const title = document.getElementById('post-title').value.trim();
+  const copy = document.getElementById('post-copy').value.trim();
+  const date = document.getElementById('post-date').value;
+  const time = document.getElementById('post-time').value;
+  const selectedGroups = [...document.querySelectorAll('#group-checkboxes input:checked')].map(cb=>cb.value);
+
+  if(!copy){return toast('Sila masukkan copywriting');}
+  if(!date||!time){return toast('Sila pilih tarikh dan masa');}
+  if(selectedGroups.length===0){return toast('Sila pilih sekurang-kurangnya 1 kumpulan');}
+
+  const post = {
+    id: Date.now(),
+    title: title||'Posting '+new Date().toLocaleDateString('ms-MY'),
+    copy,
+    date,
+    time,
+    groups: selectedGroups,
+    media: mediaData ? {name:mediaData.name,type:mediaData.type,data:mediaData.data} : null,
+    notified: false
+  };
+
+  posts.push(post);
+  savePosts();
+  clearForm();
+  toast('✅ Jadual berjaya disimpan!');
+  showPage('dashboard');
+  scheduleNotification(post);
+}
+
+function clearForm(){
+  document.getElementById('post-title').value='';
+  document.getElementById('post-copy').value='';
+  document.getElementById('post-time').value='';
+  document.getElementById('file-preview').innerHTML='';
+  mediaData=null;
+  setDefaultDate();
+  document.querySelectorAll('#group-checkboxes input').forEach(cb=>cb.checked=false);
+  document.getElementById('file-drop').innerHTML='📎 Klik untuk pilih fail video/gambar<br><small style="font-size:12px;opacity:.7">MP4, MOV, JPG, PNG</small>';
+}
+
+// ===== FILE HANDLING =====
+function handleFile(input){
+  const file = input.files[0];
+  if(!file) return;
+  if(file.size > 50*1024*1024){return toast('Fail terlalu besar (max 50MB)');}
+  const reader = new FileReader();
+  reader.onload = e=>{
+    mediaData = {name:file.name,type:file.type,data:e.target.result};
+    const isVideo = file.type.startsWith('video');
+    document.getElementById('file-drop').innerHTML = (isVideo?'🎬':'🖼️')+' '+file.name+' ('+Math.round(file.size/1024)+'KB)';
+    const prev = document.getElementById('file-preview');
+    if(isVideo){
+      prev.innerHTML=`<video src="${e.target.result}" class="video-thumb" controls muted></video>`;
+    } else {
+      prev.innerHTML=`<img src="${e.target.result}" style="max-width:200px;max-height:120px;border-radius:8px;margin-top:8px;object-fit:cover">`;
+    }
+  };
+  reader.readAsDataURL(file);
+}
+
+// ===== GROUPS =====
+function addGroup(){
+  const name = document.getElementById('grp-name').value.trim();
+  const url = document.getElementById('grp-url').value.trim();
+  if(!name||!url){return toast('Sila isi nama dan URL');}
+  if(!url.includes('facebook.com/groups')){return toast('URL mesti URL Facebook Group');}
+  groups.push({id:Date.now(),name,url});
+  saveGroups();
+  document.getElementById('grp-name').value='';
+  document.getElementById('grp-url').value='';
+  renderGroups();
+  renderGroupCheckboxes();
+  toast('✅ Kumpulan ditambah!');
+}
+
+function deleteGroup(id){
+  if(!confirm('Padam kumpulan ini?')) return;
+  groups = groups.filter(g=>g.id!==id);
+  saveGroups();
+  renderGroups();
+  renderGroupCheckboxes();
+}
+
+function renderGroups(){
+  const el = document.getElementById('group-list');
+  document.getElementById('grp-count').textContent = groups.length;
+  document.getElementById('stat-groups').textContent = groups.length;
+  if(!groups.length){el.innerHTML='<div class="empty">Tiada kumpulan lagi</div>';return;}
+  el.innerHTML = groups.map(g=>`
+    <div class="group-item">
+      <div class="group-info">
+        <div class="group-name">${esc(g.name)}</div>
+        <div class="group-url">${esc(g.url)}</div>
+      </div>
+      <div style="display:flex;gap:6px;margin-left:10px;flex-shrink:0">
+        <a href="${esc(g.url)}" target="_blank" class="btn btn-ghost btn-sm" style="text-decoration:none">Buka</a>
+        <button class="btn btn-ghost btn-sm" onclick="deleteGroup(${g.id})" style="color:var(--danger)">🗑</button>
+      </div>
+    </div>
+  `).join('');
+}
+
+function renderGroupCheckboxes(){
+  const el = document.getElementById('group-checkboxes');
+  if(!groups.length){
+    el.innerHTML='<div style="color:var(--muted);font-size:13px;padding:8px 0">Tiada kumpulan. <span style="color:var(--blue);cursor:pointer" onclick="showPage(\'groups\')">Tambah kumpulan →</span></div>';
+    return;
+  }
+  el.innerHTML = groups.map(g=>`
+    <label class="checkbox-row">
+      <input type="checkbox" value="${g.id}">
+      <div>
+        <div style="font-size:14px;font-weight:500">${esc(g.name)}</div>
+        <div style="font-size:12px;color:var(--muted)">${esc(g.url.replace('https://www.facebook.com/groups/','fb.com/groups/'))}</div>
+      </div>
+    </label>
+  `).join('');
+}
+
+function selectAllGroups(){ document.querySelectorAll('#group-checkboxes input').forEach(cb=>cb.checked=true); }
+function clearAllGroups(){ document.querySelectorAll('#group-checkboxes input').forEach(cb=>cb.checked=false); }
+
+// ===== EXCEL IMPORT =====
+function importExcel(input){
+  const file = input.files[0];
+  if(!file) return;
+  if(file.name.endsWith('.csv')){
+    const reader = new FileReader();
+    reader.onload = e=>{
+      const lines = e.target.result.split('\n').filter(l=>l.trim());
+      let added=0;
+      lines.slice(1).forEach(line=>{
+        const cols = line.split(',').map(c=>c.replace(/^"|"$/g,'').trim());
+        const name=cols[0], url=cols[1];
+        if(name&&url&&url.includes('facebook.com/groups')&&!groups.find(g=>g.url===url)){
+          groups.push({id:Date.now()+Math.random(),name,url});
+          added++;
+        }
+      });
+      saveGroups();renderGroups();renderGroupCheckboxes();
+      toast(`✅ ${added} kumpulan diimport dari CSV`);
+    };
+    reader.readAsText(file);
+  } else {
+    toast('Sila gunakan format CSV. Export Excel sebagai CSV dahulu.');
+  }
+}
+
+// ===== DASHBOARD =====
+function renderDashboard(){
+  const today = new Date().toISOString().split('T')[0];
+  const todayPosts = posts.filter(p=>p.date===today).sort((a,b)=>a.time.localeCompare(b.time));
+  const upcomingPosts = posts.filter(p=>p.date>today).sort((a,b)=>a.date.localeCompare(b.date)||a.time.localeCompare(b.time)).slice(0,10);
+
+  document.getElementById('stat-today').textContent = todayPosts.length;
+  document.getElementById('stat-total').textContent = posts.length;
+  document.getElementById('stat-groups').textContent = groups.length;
+
+  renderPostList('today-list', todayPosts);
+  renderPostList('upcoming-list', upcomingPosts);
+}
+
+function renderPostList(elId, list){
+  const el = document.getElementById(elId);
+  if(!list.length){el.innerHTML='<div class="empty">Tiada jadual</div>';return;}
+  el.innerHTML = list.map(p=>{
+    const grpNames = p.groups.map(gid=>{const g=groups.find(x=>x.id==gid);return g?g.name:'?';});
+    const now = new Date();
+    const postDt = new Date(p.date+'T'+p.time);
+    const isPast = postDt < now && p.date===new Date().toISOString().split('T')[0];
+    return `<div class="schedule-item" onclick="openPost(${p.id})">
+      <div class="meta">
+        <span class="time">${p.time}</span>
+        <span class="badge ${isPast?'badge-orange':'badge-blue'}">${isPast?'Lepas':'Dijadual'}</span>
+        ${p.media?'<span class="badge badge-green">📎 Media</span>':''}
+      </div>
+      <div class="title-text">${esc(p.title)}</div>
+      <div class="copy-preview">${esc(p.copy)}</div>
+      <div style="margin-top:6px;display:flex;gap:6px;flex-wrap:wrap">
+        ${grpNames.slice(0,3).map(n=>`<span style="font-size:11px;background:#e7f0fd;color:var(--blue);padding:2px 8px;border-radius:20px">${esc(n)}</span>`).join('')}
+        ${grpNames.length>3?`<span style="font-size:11px;color:var(--muted)">+${grpNames.length-3} lagi</span>`:''}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ===== MODAL =====
+function openPost(id){
+  const post = posts.find(p=>p.id===id);
+  if(!post) return;
+  activePostId = id;
+
+  document.getElementById('modal-title').textContent = post.title;
+  document.getElementById('modal-time').textContent = post.date+' • '+post.time;
+  document.getElementById('modal-copy').textContent = post.copy;
+
+  const grpSection = document.getElementById('modal-groups');
+  const postGroups = post.groups.map(gid=>{
+    const g=groups.find(x=>x.id==gid);
+    return g||null;
+  }).filter(Boolean);
+
+  grpSection.innerHTML = postGroups.map(g=>`
+    <a href="${esc(g.url)}" target="_blank" style="display:flex;align-items:center;justify-content:space-between;padding:10px;border:1px solid var(--border);border-radius:8px;margin-bottom:6px;text-decoration:none;color:var(--text)">
+      <span style="font-size:14px;font-weight:500">${esc(g.name)}</span>
+      <span style="font-size:13px;color:var(--blue);flex-shrink:0;margin-left:8px">Buka FB →</span>
+    </a>
+  `).join('');
+
+  const videoSec = document.getElementById('modal-video-section');
+  videoSec.style.display = post.media ? 'block' : 'none';
+
+  document.getElementById('modal-backdrop').style.display='block';
+  document.body.style.overflow='hidden';
+}
+
+function closeModal(){
+  document.getElementById('modal-backdrop').style.display='none';
+  document.body.style.overflow='';
+  activePostId=null;
+}
+
+function copyCopy(){
+  const post = posts.find(p=>p.id===activePostId);
+  if(!post) return;
+  navigator.clipboard.writeText(post.copy).then(()=>toast('✅ Copywriting disalin!')).catch(()=>{
+    const ta=document.createElement('textarea');
+    ta.value=post.copy;document.body.appendChild(ta);ta.select();document.execCommand('copy');document.body.removeChild(ta);
+    toast('✅ Copywriting disalin!');
+  });
+}
+
+function downloadMedia(){
+  const post = posts.find(p=>p.id===activePostId);
+  if(!post||!post.media) return;
+  const a=document.createElement('a');
+  a.href=post.media.data;
+  a.download=post.media.name;
+  a.click();
+  toast('⬇️ Media sedang didownload...');
+}
+
+function deletePost(){
+  if(!confirm('Padam jadual ini?')) return;
+  posts=posts.filter(p=>p.id!==activePostId);
+  savePosts();
+  closeModal();
+  renderDashboard();
+  toast('🗑 Jadual dipadam');
+}
+
+// ===== NOTIFICATIONS =====
+async function requestNotifPermission(){
+  const banner = document.getElementById('notif-status');
+  if(!('Notification' in window)){
+    banner.style.display='block';
+    banner.textContent='⚠️ Browser ini tidak support notifikasi. Guna Safari di iPhone untuk Push Notification.';
+    return;
+  }
+  if(Notification.permission==='granted'){
+    banner.style.display='block';
+    banner.style.background='#e6f7e3';banner.style.borderColor='#42b72a';banner.style.color='#1a5f1a';
+    banner.textContent='✅ Notifikasi diaktifkan. Anda akan dapat peringatan sebelum setiap posting!';
+  } else if(Notification.permission==='default'){
+    banner.style.display='block';
+    banner.innerHTML='🔔 <strong>Aktifkan notifikasi</strong> untuk dapat peringatan masa posting. <button class="btn btn-primary btn-sm" onclick="askNotif()" style="margin-left:8px">Aktifkan Sekarang</button>';
+  } else {
+    banner.style.display='block';
+    banner.textContent='🔕 Notifikasi disekat. Benarkan notifikasi dalam tetapan browser.';
+  }
+}
+
+function askNotif(){
+  Notification.requestPermission().then(p=>{
+    if(p==='granted') requestNotifPermission();
+    else toast('Notifikasi tidak dibenarkan');
+  });
+}
+
+function scheduleNotification(post){
+  const postDt = new Date(post.date+'T'+post.time);
+  const now = new Date();
+  const diff = postDt - now - 2*60*1000; // 2 minit awal
+  if(diff <= 0) return;
+  if(diff > 7*24*60*60*1000) return; // max 7 hari (browser limit)
+  setTimeout(()=>{
+    if(Notification.permission==='granted'){
+      const grpNames = post.groups.map(gid=>{const g=groups.find(x=>x.id==gid);return g?g.name:'';}).filter(Boolean).slice(0,2);
+      const n = new Notification('📅 Masa Posting Hampir Tiba!',{
+        body: `${post.title}\n⏰ ${post.time} – ${grpNames.join(', ')}${post.groups.length>2?' +lagi':''}`,
+        icon:'icon-192.png',
+        badge:'icon-192.png',
+        tag:'post-'+post.id
+      });
+      n.onclick=()=>{
+        window.focus();
+        openPost(post.id);
+        n.close();
+      };
+    }
+  }, diff);
+}
+
+function scheduleChecker(){
+  // Re-schedule all future posts on load
+  posts.forEach(post=>{
+    const postDt = new Date(post.date+'T'+post.time);
+    if(postDt > new Date()) scheduleNotification(post);
+  });
+  // Also check every minute
+  setInterval(()=>{
+    const now = new Date();
+    const pad=n=>String(n).padStart(2,'0');
+    const todayStr = `${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())}`;
+    const timeStr = `${pad(now.getHours())}:${pad(now.getMinutes())}`;
+    posts.forEach(post=>{
+      if(post.date===todayStr&&post.time===timeStr&&!post.notified){
+        post.notified=true;
+        savePosts();
+        renderDashboard();
+      }
+    });
+  }, 30000);
+}
+
+// ===== PWA =====
+function checkPWA(){
+  const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
+  const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
+  if(isIOS && !isStandalone){
+    document.getElementById('pwa-banner').style.display='block';
+  }
+}
+
+// ===== STORAGE =====
+function savePosts(){ localStorage.setItem('fb_posts',JSON.stringify(posts)); }
+function saveGroups(){ localStorage.setItem('fb_groups',JSON.stringify(groups)); }
+
+// ===== UTIL =====
+function esc(s){ const d=document.createElement('div');d.textContent=s||'';return d.innerHTML; }
+function toast(msg,dur=2800){
+  const t=document.getElementById('toast');
+  t.textContent=msg;t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'),dur);
+}
+
+// Close modal on backdrop click
+document.getElementById('modal-backdrop').addEventListener('click',e=>{
+  if(e.target===document.getElementById('modal-backdrop')) closeModal();
+});
+</script>
+</body>
+</html>
