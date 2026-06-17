@@ -1,0 +1,1197 @@
+<!DOCTYPE html>
+<html lang="ms">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#1877F2">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="PostJadual">
+<title>PostJadual – FB Group Scheduler</title>
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon-192.png">
+<script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" defer></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --blue:#1877F2;--blue-dark:#1558b0;--bg:#f0f2f5;--card:#fff;
+  --text:#050505;--muted:#65676B;--border:#ddd;--danger:#e41e3f;
+  --green:#42b72a;--green-dark:#2d8a1e;--radius:8px;--shadow:0 1px 3px rgba(0,0,0,.12)
+}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
+nav{background:var(--blue);color:#fff;padding:0 10px;display:flex;align-items:center;justify-content:space-between;height:56px;position:sticky;top:0;z-index:100;box-shadow:0 2px 8px rgba(0,0,0,.2)}
+nav h1{font-size:17px;font-weight:700;letter-spacing:-.3px;flex-shrink:0}
+nav .nav-tabs{display:flex;gap:3px}
+nav button{background:rgba(255,255,255,.18);border:none;color:#fff;padding:6px 10px;border-radius:20px;cursor:pointer;font-size:12px;font-weight:500;transition:background .15s}
+nav button.active,nav button:hover{background:rgba(255,255,255,.32)}
+.container{max-width:680px;margin:0 auto;padding:14px}
+.card{background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);padding:18px;margin-bottom:14px}
+.card h2{font-size:15px;font-weight:600;margin-bottom:12px}
+label{display:block;font-size:13px;font-weight:500;color:var(--muted);margin-bottom:4px;margin-top:12px}
+label:first-child{margin-top:0}
+input[type=text],input[type=date],input[type=time],input[type=url],textarea{
+  width:100%;padding:10px 12px;border:1.5px solid var(--border);border-radius:var(--radius);
+  font-size:14px;font-family:inherit;color:var(--text);background:#fff;transition:border-color .15s;outline:none
+}
+input:focus,textarea:focus{border-color:var(--blue)}
+textarea{resize:vertical;min-height:100px;line-height:1.5}
+.btn{display:inline-flex;align-items:center;gap:6px;padding:10px 18px;border:none;border-radius:var(--radius);font-size:14px;font-weight:600;cursor:pointer;transition:all .15s}
+.btn-primary{background:var(--blue);color:#fff}.btn-primary:hover{background:var(--blue-dark)}
+.btn-danger{background:var(--danger);color:#fff}
+.btn-green{background:var(--green);color:#fff}.btn-green:hover{background:var(--green-dark)}
+.btn-sm{padding:6px 12px;font-size:13px}
+.btn-ghost{background:transparent;border:1.5px solid var(--border);color:var(--text)}.btn-ghost:hover{background:#f5f5f5}
+.badge{display:inline-block;padding:2px 10px;border-radius:20px;font-size:12px;font-weight:600}
+.badge-blue{background:#e7f0fd;color:var(--blue)}.badge-green{background:#e6f7e3;color:#1a7f37}
+.badge-orange{background:#fff3e0;color:#e65100}.badge-gray{background:#f0f0f0;color:#555}
+.schedule-item{border:1.5px solid var(--border);border-radius:var(--radius);padding:14px;margin-bottom:10px;cursor:pointer;transition:border-color .15s}
+.schedule-item:hover{border-color:var(--blue)}
+.schedule-item .meta{display:flex;gap:8px;align-items:center;margin-bottom:6px;flex-wrap:wrap}
+.schedule-item .time-big{font-size:20px;font-weight:700;color:var(--blue)}
+.schedule-item .title-text{font-size:14px;font-weight:500}
+.schedule-item .copy-prev{font-size:13px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:3px}
+.group-item{display:flex;align-items:center;justify-content:space-between;padding:10px;border:1px solid var(--border);border-radius:var(--radius);margin-bottom:8px}
+.group-info{flex:1;min-width:0}
+.group-name{font-weight:500;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.group-url{font-size:12px;color:var(--blue);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.stats-row{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:14px}
+.stat-card{background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);padding:12px 8px;text-align:center}
+.stat-card .num{font-size:24px;font-weight:700;color:var(--blue)}
+.stat-card .lbl{font-size:11px;color:var(--muted);margin-top:2px}
+.page{display:none}.page.active{display:block}
+.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#050505;color:#fff;padding:10px 20px;border-radius:24px;font-size:14px;font-weight:500;z-index:9999;opacity:0;transition:opacity .25s;pointer-events:none;white-space:nowrap;max-width:90vw}
+.toast.show{opacity:1}
+.empty{text-align:center;padding:32px 20px;color:var(--muted);font-size:14px}
+.copy-box{background:#f7f8fa;border:1.5px solid var(--border);border-radius:var(--radius);padding:14px;font-size:14px;line-height:1.6;white-space:pre-wrap;word-break:break-word;margin:8px 0;max-height:180px;overflow-y:auto}
+.file-drop{border:2px dashed var(--border);border-radius:var(--radius);padding:20px;text-align:center;cursor:pointer;color:var(--muted);font-size:14px;transition:all .15s}
+.file-drop:hover{border-color:var(--blue);color:var(--blue)}
+.file-drop.uploading{border-color:var(--blue);background:#f0f5ff;cursor:default}
+.progress-bar{height:6px;background:#e0e0e0;border-radius:3px;overflow:hidden;margin-top:10px}
+.progress-fill{height:100%;background:var(--blue);border-radius:3px;transition:width .3s;width:0%}
+.banner{border-radius:var(--radius);padding:12px 14px;font-size:13px;margin-bottom:14px;line-height:1.6;border:1.5px solid}
+.banner-warn{background:#fff3cd;border-color:#ffc107;color:#664d03}
+.banner-ok{background:#e6f7e3;border-color:#42b72a;color:#1a5f1a}
+.banner-err{background:#fde8ec;border-color:#e41e3f;color:#8b0000}
+.banner-info{background:#e7f0fd;border-color:#1877F2;color:#0d47a1}
+.checkbox-row{display:flex;align-items:center;gap:10px;padding:8px 10px;border:1px solid var(--border);border-radius:6px;margin-bottom:6px;cursor:pointer}
+.checkbox-row:hover{border-color:var(--blue);background:#fafcff}
+.checkbox-row input{width:16px;height:16px;accent-color:var(--blue);flex-shrink:0}
+.log-item{border:1.5px solid var(--border);border-radius:var(--radius);padding:12px;margin-bottom:8px}
+.log-item:hover{border-color:var(--blue)}
+.log-meta{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:6px}
+.log-title{font-size:14px;font-weight:500}
+.log-copy{font-size:13px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.log-actions{display:flex;gap:6px;margin-top:8px;flex-wrap:wrap}
+.settings-row{display:flex;align-items:center;justify-content:space-between;padding:12px 0;border-bottom:1px solid var(--border)}
+.settings-row:last-child{border-bottom:none}
+.settings-label{font-size:14px;font-weight:500}
+.settings-desc{font-size:12px;color:var(--muted);margin-top:2px}
+.step-box{background:#f8f9ff;border:1.5px solid #c5d5f5;border-radius:var(--radius);padding:14px;margin-bottom:10px}
+.step-box .step-num{display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;background:var(--blue);color:#fff;border-radius:50%;font-size:12px;font-weight:700;margin-right:8px;flex-shrink:0}
+details summary{cursor:pointer;font-size:13px;color:var(--blue);font-weight:500;list-style:none;padding:4px 0}
+details summary::-webkit-details-marker{display:none}
+details[open] summary{margin-bottom:8px}
+@media(max-width:480px){.stats-row{grid-template-columns:repeat(2,1fr)}}
+</style>
+</head>
+<body>
+<nav>
+  <h1>📅 PostJadual</h1>
+  <div class="nav-tabs">
+    <button class="active" onclick="showPage('dashboard')">Utama</button>
+    <button onclick="showPage('create')">+Buat</button>
+    <button onclick="showPage('groups')">Kumpulan</button>
+    <button onclick="showPage('log')">Log</button>
+    <button onclick="showPage('settings')">⚙️</button>
+  </div>
+</nav>
+
+<div class="container">
+
+<!-- ===== DASHBOARD ===== -->
+<div id="page-dashboard" class="page active">
+  <div id="banner-pwa" class="banner banner-info" style="display:none">
+    📱 <strong>Buka dari Home Screen</strong> untuk notifikasi lock screen berfungsi.<br>
+    Safari → Share (↑) → "Add to Home Screen" → buka dari ikon tu.
+  </div>
+  <div id="banner-setup" class="banner banner-warn" style="display:none">
+    ⚙️ <strong>OneSignal belum dikonfigurasi.</strong> Notifikasi lock screen tidak akan berfungsi.<br>
+    <button class="btn btn-primary btn-sm" style="margin-top:8px" onclick="showPage('settings')">Buka Tetapan →</button>
+  </div>
+  <div id="banner-notif" class="banner banner-ok" style="display:none"></div>
+
+  <div class="stats-row">
+    <div class="stat-card"><div class="num" id="stat-today">0</div><div class="lbl">Hari Ini</div></div>
+    <div class="stat-card"><div class="num" id="stat-upcoming">0</div><div class="lbl">Akan Datang</div></div>
+    <div class="stat-card"><div class="num" id="stat-done">0</div><div class="lbl">Selesai</div></div>
+    <div class="stat-card"><div class="num" id="stat-groups">0</div><div class="lbl">Kumpulan</div></div>
+  </div>
+
+  <div class="card">
+    <h2>📋 Jadual Hari Ini</h2>
+    <div id="today-list"><div class="empty">Tiada jadual hari ini</div></div>
+  </div>
+  <div class="card">
+    <h2>⏳ Akan Datang</h2>
+    <div id="upcoming-list"><div class="empty">Tiada jadual akan datang</div></div>
+  </div>
+</div>
+
+<!-- ===== CREATE ===== -->
+<div id="page-create" class="page">
+  <div class="card">
+    <h2>✏️ Buat Posting Baru</h2>
+    <label>Nama / Tajuk</label>
+    <input type="text" id="post-title" placeholder="cth: Promosi Raya #3">
+    <label>Copywriting</label>
+    <textarea id="post-copy" placeholder="Taip atau paste copywriting anda...&#10;Emoji, link, hashtag — semua boleh ✅"></textarea>
+    <label>Video / Gambar (pilihan)</label>
+    <div class="file-drop" id="file-drop" onclick="triggerFile()">
+      <div id="file-drop-text">📎 Klik untuk pilih video/gambar<br><small style="font-size:12px;opacity:.7">MP4, MOV, JPG, PNG — simpan dalam IndexedDB (tiada had size kecil)</small></div>
+      <div class="progress-bar" id="prog-bar" style="display:none"><div class="progress-fill" id="prog-fill"></div></div>
+    </div>
+    <input type="file" id="file-input" accept="video/*,image/*" style="display:none" onchange="handleFile(this)">
+    <div id="file-preview"></div>
+    <label>Tarikh</label>
+    <input type="date" id="post-date">
+    <label>Masa Posting</label>
+    <input type="time" id="post-time">
+    <label>Kumpulan Sasaran</label>
+    <div id="group-checkboxes"><div style="color:var(--muted);font-size:13px;padding:8px 0">Tiada kumpulan. <span style="color:var(--blue);cursor:pointer" onclick="showPage('groups')">Tambah →</span></div></div>
+    <div style="margin-top:6px;display:flex;gap:8px">
+      <button class="btn btn-ghost btn-sm" onclick="selAll()">Pilih Semua</button>
+      <button class="btn btn-ghost btn-sm" onclick="selNone()">Nyahpilih</button>
+    </div>
+    <div style="margin-top:18px;display:flex;gap:10px;flex-wrap:wrap">
+      <button class="btn btn-primary" id="save-btn" onclick="savePost()">💾 Simpan Jadual</button>
+      <button class="btn btn-ghost" onclick="clearForm()">🗑 Kosongkan</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== GROUPS ===== -->
+<div id="page-groups" class="page">
+  <div class="card">
+    <h2>➕ Tambah Kumpulan</h2>
+    <label>Nama Kumpulan</label>
+    <input type="text" id="grp-name" placeholder="cth: Jualan Online Malaysia">
+    <label>URL Facebook Group</label>
+    <input type="url" id="grp-url" placeholder="https://www.facebook.com/groups/...">
+    <div style="margin-top:14px"><button class="btn btn-primary" onclick="addGroup()">Tambah</button></div>
+    <details style="margin-top:16px">
+      <summary>📤 Import dari CSV</summary>
+      <div style="margin-top:8px">
+        <div class="file-drop" onclick="document.getElementById('csv-input').click()" style="padding:14px">
+          📊 Klik untuk pilih fail CSV<br>
+          <small style="font-size:12px;opacity:.7">Header: "Nama" dan "URL"</small>
+        </div>
+        <input type="file" id="csv-input" accept=".csv" style="display:none" onchange="importCSV(this)">
+      </div>
+    </details>
+  </div>
+  <div class="card">
+    <h2>📋 Senarai Kumpulan (<span id="grp-count">0</span>)</h2>
+    <div id="group-list"><div class="empty">Tiada kumpulan lagi</div></div>
+  </div>
+</div>
+
+<!-- ===== LOG ===== -->
+<div id="page-log" class="page">
+  <div class="card" style="padding:14px 18px">
+    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">
+      <h2 style="margin:0">📂 Log Posting Lepas</h2>
+      <div style="display:flex;gap:6px">
+        <input type="month" id="log-month" onchange="renderLog()" style="padding:6px 10px;font-size:13px;border:1.5px solid var(--border);border-radius:var(--radius);outline:none">
+        <button class="btn btn-ghost btn-sm" onclick="document.getElementById('log-month').value='';renderLog()">Semua</button>
+      </div>
+    </div>
+  </div>
+  <div id="log-list"><div class="empty">Tiada rekod log</div></div>
+</div>
+
+<!-- ===== SETTINGS ===== -->
+<div id="page-settings" class="page">
+
+  <!-- OneSignal Setup Guide -->
+  <div class="card">
+    <h2>🔔 Setup OneSignal (Notifikasi Lock Screen)</h2>
+    <div id="os-status" class="banner banner-warn" style="margin-bottom:14px">⏳ Memeriksa status OneSignal...</div>
+
+    <div style="margin-bottom:16px">
+      <label style="margin-top:0">OneSignal App ID</label>
+      <div style="display:flex;gap:8px">
+        <input type="text" id="os-app-id" placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" style="font-family:monospace;font-size:13px">
+        <button class="btn btn-primary" onclick="saveOSAppId()" style="flex-shrink:0">Simpan</button>
+      </div>
+      <div style="font-size:12px;color:var(--muted);margin-top:6px">App ID boleh dijumpai di OneSignal Dashboard → Settings → Keys & IDs</div>
+    </div>
+
+    <details open>
+      <summary>📖 Cara Daftar & Setup OneSignal (klik untuk buka)</summary>
+      <div style="margin-top:12px">
+
+        <div class="step-box">
+          <div style="display:flex;align-items:flex-start">
+            <span class="step-num">1</span>
+            <div>
+              <strong>Daftar akaun OneSignal</strong><br>
+              <span style="font-size:13px;color:var(--muted)">Pergi ke <a href="https://onesignal.com" target="_blank" style="color:var(--blue)">onesignal.com</a> → klik "Get Started Free" → daftar dengan email atau Google</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="step-box">
+          <div style="display:flex;align-items:flex-start">
+            <span class="step-num">2</span>
+            <div>
+              <strong>Buat App baru</strong><br>
+              <span style="font-size:13px;color:var(--muted)">
+                Selepas log masuk → klik "New App/Website"<br>
+                • App Name: <em>PostJadual</em> (atau apa-apa nama)<br>
+                • Pilih platform: <strong>Web</strong><br>
+                • Klik "Next: Configure Your Platform"
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <div class="step-box">
+          <div style="display:flex;align-items:flex-start">
+            <span class="step-num">3</span>
+            <div>
+              <strong>Konfigurasi Web Platform</strong><br>
+              <span style="font-size:13px;color:var(--muted)">
+                Pilih <strong>"My site is not fully HTTPS"</strong> → <strong>TIDAK perlu</strong><br>
+                Pilih <strong>"Site URL"</strong>: masukkan URL GitHub Pages anda<br>
+                Contoh: <code style="background:#f0f0f0;padding:1px 6px;border-radius:3px;font-size:12px">https://username.github.io</code><br>
+                • Label: PostJadual<br>
+                • Klik "Save & Continue"
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <div class="step-box">
+          <div style="display:flex;align-items:flex-start">
+            <span class="step-num">4</span>
+            <div>
+              <strong>Download SDK files</strong><br>
+              <span style="font-size:13px;color:var(--muted)">
+                OneSignal akan bagi 2 fail untuk download:<br>
+                • <code style="background:#f0f0f0;padding:1px 6px;border-radius:3px;font-size:12px">OneSignalSDKWorker.js</code><br>
+                • <code style="background:#f0f0f0;padding:1px 6px;border-radius:3px;font-size:12px">OneSignalSDKUpdaterWorker.js</code><br>
+                <strong>Upload kedua-dua fail ini ke root folder GitHub Pages anda</strong> (sama lokasi dengan index.html)
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <div class="step-box">
+          <div style="display:flex;align-items:flex-start">
+            <span class="step-num">5</span>
+            <div>
+              <strong>Salin App ID</strong><br>
+              <span style="font-size:13px;color:var(--muted)">
+                Klik "Finish" → Pergi ke <strong>Settings → Keys & IDs</strong><br>
+                Salin nilai <strong>OneSignal App ID</strong><br>
+                Paste ke dalam kotak di atas → klik Simpan
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <div class="step-box" style="background:#e6f7e3;border-color:#42b72a">
+          <div style="display:flex;align-items:flex-start">
+            <span class="step-num" style="background:#2d8a1e">6</span>
+            <div>
+              <strong>Aktifkan notifikasi dalam app</strong><br>
+              <span style="font-size:13px;color:var(--muted)">
+                Selepas simpan App ID → klik butang <strong>"Aktifkan Notifikasi"</strong> yang akan muncul di bawah.<br>
+                iPhone akan tanya kebenaran → tap <strong>Allow</strong><br>
+                ✅ Notifikasi kini akan keluar di lock screen!
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <div id="os-subscribe-section" style="display:none;margin-top:4px">
+          <button class="btn btn-green" style="width:100%;justify-content:center" onclick="subscribeOneSignal()">
+            🔔 Aktifkan Notifikasi Lock Screen
+          </button>
+        </div>
+
+      </div>
+    </details>
+  </div>
+
+  <!-- Other settings -->
+  <div class="card">
+    <h2>⚙️ Tetapan Lain</h2>
+    <div class="settings-row">
+      <div>
+        <div class="settings-label">Notifikasi awal (minit)</div>
+        <div class="settings-desc">Berapa minit sebelum masa posting notifikasi dihantar</div>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px">
+        <input type="number" id="notif-mins" min="1" max="60" value="2" style="width:60px;text-align:center;padding:6px">
+        <button class="btn btn-primary btn-sm" onclick="saveNotifMins()">Simpan</button>
+      </div>
+    </div>
+    <div class="settings-row">
+      <div>
+        <div class="settings-label">Export semua data (backup)</div>
+        <div class="settings-desc">Download semua jadual sebagai fail JSON</div>
+      </div>
+      <button class="btn btn-ghost btn-sm" onclick="exportData()">⬇️ Export</button>
+    </div>
+    <div class="settings-row">
+      <div>
+        <div class="settings-label">Padam semua jadual</div>
+        <div class="settings-desc">Padam semua posting (kumpulan tidak dipadam)</div>
+      </div>
+      <button class="btn btn-danger btn-sm" onclick="clearAllPosts()">🗑 Padam Semua</button>
+    </div>
+  </div>
+</div>
+
+</div><!-- /container -->
+
+<!-- MODAL -->
+<div id="modal-backdrop" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:200;overflow-y:auto;-webkit-overflow-scrolling:touch">
+  <div style="background:#fff;max-width:500px;margin:32px auto 20px;border-radius:12px;overflow:hidden">
+    <div style="background:var(--blue);padding:14px 18px;color:#fff">
+      <div style="font-size:17px;font-weight:700" id="modal-title"></div>
+      <div style="font-size:13px;opacity:.85;margin-top:2px" id="modal-time"></div>
+    </div>
+    <div style="padding:18px">
+      <div style="font-size:11px;color:var(--muted);font-weight:600;letter-spacing:.5px;margin-bottom:4px">COPYWRITING</div>
+      <div class="copy-box" id="modal-copy"></div>
+      <button class="btn btn-primary" style="width:100%;justify-content:center;margin-bottom:12px" onclick="copyCopy()">📋 Salin Copywriting</button>
+      <div id="modal-media-section" style="display:none;margin-bottom:12px">
+        <div style="font-size:11px;color:var(--muted);font-weight:600;letter-spacing:.5px;margin-bottom:6px">MEDIA</div>
+        <div id="modal-media-preview" style="margin-bottom:8px"></div>
+        <button class="btn btn-ghost" style="width:100%;justify-content:center" onclick="downloadMedia()">⬇️ Download ke Galeri</button>
+      </div>
+      <div style="font-size:11px;color:var(--muted);font-weight:600;letter-spacing:.5px;margin-bottom:8px">KUMPULAN (<span id="modal-grp-count">0</span>)</div>
+      <div id="modal-groups" style="max-height:240px;overflow-y:auto"></div>
+      <div style="display:flex;gap:8px;margin-top:14px;flex-wrap:wrap">
+        <button class="btn btn-ghost" style="flex:1;justify-content:center" onclick="closeModal()">Tutup</button>
+        <button class="btn btn-green btn-sm" onclick="duplicatePost()">📋 Duplikasi</button>
+        <button class="btn btn-danger btn-sm" onclick="deletePost()">🗑 Padam</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ================================================================
+// STATE
+// ================================================================
+let posts   = [];
+let groups  = JSON.parse(localStorage.getItem('fb_groups') || '[]');
+let DB      = null;
+let osReady = false;
+let activePostId = null;
+let pendingMedia = null;
+
+const NOTIF_MINS_KEY = 'notif_mins';
+const OS_APP_ID_KEY  = 'os_app_id';
+
+// ================================================================
+// INDEXEDDB
+// ================================================================
+function openDB() {
+  return new Promise((res, rej) => {
+    const r = indexedDB.open('PostJadualDB', 2);
+    r.onupgradeneeded = e => {
+      const db = e.target.result;
+      if (!db.objectStoreNames.contains('posts')) db.createObjectStore('posts', { keyPath:'id' });
+      if (!db.objectStoreNames.contains('media')) db.createObjectStore('media', { keyPath:'id' });
+    };
+    r.onsuccess = e => res(e.target.result);
+    r.onerror   = () => rej(r.error);
+  });
+}
+function dbTx(store, mode, fn) {
+  return new Promise((res, rej) => {
+    const tx  = DB.transaction(store, mode);
+    const req = fn(tx.objectStore(store));
+    req.onsuccess = () => res(req.result);
+    req.onerror   = () => rej(req.error);
+  });
+}
+const dbGet    = (s,k) => dbTx(s,'readonly',  st => st.get(k));
+const dbPut    = (s,v) => dbTx(s,'readwrite', st => st.put(v));
+const dbDel    = (s,k) => dbTx(s,'readwrite', st => st.delete(k));
+const dbGetAll = (s)   => dbTx(s,'readonly',  st => st.getAll());
+
+// ================================================================
+// INIT
+// ================================================================
+async function init() {
+  try {
+    DB    = await openDB();
+    posts = await dbGetAll('posts');
+    posts.sort((a,b)=>(a.date+a.time).localeCompare(b.date+b.time));
+  } catch(e) {
+    posts = JSON.parse(localStorage.getItem('fb_posts')||'[]');
+  }
+
+  // Load saved settings
+  const savedId = localStorage.getItem(OS_APP_ID_KEY);
+  if (savedId) document.getElementById('os-app-id').value = savedId;
+  const savedMins = localStorage.getItem(NOTIF_MINS_KEY);
+  if (savedMins) document.getElementById('notif-mins').value = savedMins;
+
+  setDefaultDate();
+  renderDashboard();
+  renderGroups();
+  renderGroupCheckboxes();
+  checkPWA();
+  await initOneSignal();
+  startMinuteTick();
+  handleURLParams();
+}
+
+document.addEventListener('DOMContentLoaded', init);
+
+// ============================================================
+// ONESIGNAL — load SDK secara dinamik
+// ============================================================
+function loadOneSignalSDK() {
+  return new Promise((resolve, reject) => {
+    if (window.OneSignal && window.OneSignalDeferred) { resolve(); return; }
+    const script = document.createElement('script');
+    script.src = 'https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js';
+    script.async = true;
+    script.onload  = () => resolve();
+    script.onerror = () => reject(new Error('SDK gagal dimuatkan. Semak sambungan internet.'));
+    document.head.appendChild(script);
+  });
+}
+
+async function initOneSignal() {
+  const appId = localStorage.getItem('os_app_id') || '';
+  const isConfigured = appId.length > 20 && appId.includes('-');
+
+  if (!isConfigured) {
+    document.getElementById('setup-banner').style.display = 'block';
+    updateNotifBanner('unconfigured');
+    return;
+  }
+  document.getElementById('setup-banner').style.display = 'none';
+  updateNotifBanner('loading');
+
+  try {
+    await loadOneSignalSDK();
+    window.OneSignalDeferred = window.OneSignalDeferred || [];
+    OneSignalDeferred.push(async (OS) => {
+      try {
+        await OS.init({
+          appId: appId,
+          notifyButton: { enable: false },
+          allowLocalhostAsSecureOrigin: true,
+          serviceWorkerParam: { scope: '/' },
+        });
+        osInitialized = true;
+        const isSubscribed = OS.User.PushSubscription.optedIn;
+        updateNotifBanner(isSubscribed ? 'subscribed' : 'notsubscribed');
+        renderSysStatus();
+        if (!isSubscribed) {
+          setTimeout(() => { try { OS.Slidedown.promptPush(); } catch(e) {} }, 1500);
+        }
+        OS.User.PushSubscription.addEventListener('change', () => {
+          updateNotifBanner(OS.User.PushSubscription.optedIn ? 'subscribed' : 'notsubscribed');
+          renderSysStatus();
+        });
+      } catch(e) {
+        console.error('OS.init error:', e);
+        updateNotifBanner('error', e.message);
+      }
+    });
+  } catch(e) {
+    console.error('SDK load error:', e);
+    updateNotifBanner('error', e.message);
+  }
+}
+
+function updateNotifBanner(state, msg) {
+  const el = document.getElementById('notif-status');
+  el.style.display = 'block';
+  el.className = 'notif-banner';
+  const map = {
+    unconfigured:  ['notif-warn', '⚠️ Notifikasi lock screen belum aktif. <button class="btn btn-primary btn-sm" onclick="showPage('settings')" style="margin-left:6px">Setup Sekarang →</button>'],
+    loading:       ['notif-warn', '⏳ Memuat OneSignal SDK...'],
+    subscribed:    ['notif-ok',   '✅ Notifikasi lock screen aktif — keluar di lock screen walaupun phone dikunci!'],
+    notsubscribed: ['notif-warn', '🔔 OneSignal bersedia. <button class="btn btn-primary btn-sm" onclick="subscribeOS()" style="margin-left:6px">Aktifkan Notifikasi</button>'],
+    error:         ['notif-err',  '❌ OneSignal gagal: ' + (msg || 'semak App ID dan cuba reload')],
+  };
+  const [cls, html] = map[state] || map.error;
+  el.classList.add(cls);
+  el.innerHTML = html;
+}
+
+function subscribeOS() {
+  if (!window.OneSignalDeferred) { toast('OneSignal belum dimuatkan'); return; }
+  OneSignalDeferred.push(async (OS) => {
+    try { await OS.Slidedown.promptPush(); }
+    catch(e) { toast('Gagal — cuba reload app'); }
+  });
+}
+
+function saveOSAppId() {
+  const id = document.getElementById('os-app-id').value.trim();
+  if (!id)             { toast('Sila masukkan App ID'); return; }
+  if (id.length < 20)  { toast('App ID terlalu pendek — semak semula'); return; }
+  if (!id.includes('-')){ toast('Format App ID tidak betul (perlu ada tanda -)'); return; }
+  localStorage.setItem('os_app_id', id);
+  document.getElementById('os-status').innerHTML = '<span style="color:green">✅ Disimpan. Memuat semula...</span>';
+  setTimeout(() => location.reload(), 1200);
+}
+
+function testNotif() {
+  toast('Pergi ke onesignal.com → Messages → New Push → Send to Test Device');
+}
+
+// ============================================================
+// SCHEDULE NOTIFICATION via OneSignal REST API
+// ============================================================
+async function scheduleOSNotification(post) {
+  const restKey = localStorage.getItem('os_rest_key');
+  const appId   = localStorage.getItem('os_app_id') || '';
+  if (!restKey || !appId) return;
+
+  const offset  = parseInt(document.getElementById('notif-offset')?.value || '5');
+  const postDt  = new Date(post.date + 'T' + post.time);
+  const fireAt  = new Date(postDt.getTime() - offset * 60000);
+  if (fireAt <= new Date()) return;
+
+  const grpNames = post.groups
+    .map(gid => { const g = groups.find(x => x.id == gid); return g ? g.name : ''; })
+    .filter(Boolean).slice(0,2).join(', ');
+
+  try {
+    const res = await fetch('https://onesignal.com/api/v1/notifications', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Basic ' + restKey },
+      body: JSON.stringify({
+        app_id: appId,
+        included_segments: ['Subscribed Users'],
+        headings: { en: '📅 Masa Posting Hampir Tiba!' },
+        contents: { en: post.title + '\n⏰ ' + post.time + (grpNames ? ' — ' + grpNames : '') },
+        send_after: fireAt.toUTCString(),
+        url: location.origin + location.pathname + '?openPost=' + post.id,
+        web_push_topic: 'post-' + post.id,
+        priority: 10,
+        ttl: 3600,
+      })
+    });
+    const data = await res.json();
+    if (data.id) {
+      const ids = JSON.parse(localStorage.getItem('os_notif_ids') || '{}');
+      ids[post.id] = data.id;
+      localStorage.setItem('os_notif_ids', JSON.stringify(ids));
+    } else {
+      console.warn('OS schedule response:', data);
+    }
+  } catch(e) {
+    console.error('OS schedule error:', e);
+  }
+}
+
+async function cancelOSNotification(postId) {
+  const restKey = localStorage.getItem('os_rest_key');
+  const appId   = localStorage.getItem('os_app_id') || '';
+  const ids     = JSON.parse(localStorage.getItem('os_notif_ids') || '{}');
+  const notifId = ids[postId];
+  if (!restKey || !appId || !notifId) return;
+  try {
+    await fetch('https://onesignal.com/api/v1/notifications/' + notifId + '?app_id=' + appId, {
+      method: 'DELETE', headers: { 'Authorization': 'Basic ' + restKey }
+    });
+    delete ids[postId];
+    localStorage.setItem('os_notif_ids', JSON.stringify(ids));
+  } catch(e) {}
+}
+
+// ============================================================
+// SETTINGS PAGE
+// ============================================================
+function loadSettingsPage() {
+  const saved = localStorage.getItem('os_app_id') || '';
+  if (saved) document.getElementById('os-app-id').value = saved;
+  renderSysStatus();
+}
+
+function renderSysStatus() {
+  const appId   = localStorage.getItem('os_app_id') || '';
+  const restKey = localStorage.getItem('os_rest_key') || '';
+  const configured = appId.length > 20;
+
+  let subStatus = 'Semak...';
+  try {
+    if (window.OneSignalDeferred && osInitialized) {
+      OneSignalDeferred.push(async (OS) => {
+        const sub = OS.User.PushSubscription.optedIn;
+        subStatus = sub ? '✅ Ya (notifikasi aktif)' : '❌ Belum subscribe';
+        document.getElementById('sys-status').innerHTML = buildSysHTML(configured, subStatus, restKey);
+      });
+    }
+  } catch(e) {}
+
+  document.getElementById('sys-status').innerHTML = buildSysHTML(configured, subStatus, restKey);
+}
+
+function buildSysHTML(configured, subStatus, restKey) {
+  const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
+  const isPWA = window.matchMedia('(display-mode:standalone)').matches || navigator.standalone;
+  const row = (icon, label, val) => `<div style="padding:4px 0">${icon} <strong>${label}:</strong> ${val}</div>`;
+  return [
+    row(configured ? '✅' : '❌', 'OneSignal App ID', configured ? 'Dikonfigurasi' : 'Belum diset'),
+    row(restKey ? '✅' : '⚠️', 'REST API Key', restKey ? 'Ada (notifikasi auto aktif)' : 'Belum diset — notifikasi auto tidak berfungsi'),
+    row('📱', 'Platform', isIOS ? 'iPhone/iPad' : 'Android/Desktop'),
+    row(isPWA ? '✅' : '⚠️', 'PWA Mode', isPWA ? 'Home Screen (betul)' : 'Dalam Safari — tambah ke Home Screen dulu'),
+    `<div style="margin-top:12px;padding:12px;background:#f0f5ff;border-radius:8px;font-size:13px;line-height:1.8">
+      <strong style="color:var(--blue)">REST API Key (untuk notifikasi auto):</strong><br>
+      1. onesignal.com → Settings → Keys & IDs<br>
+      2. Salin <em>REST API Key</em> (bukan App ID)<br>
+      <input type="text" id="os-rest-key-input" placeholder="REST API Key" value="${restKey}"
+        style="width:100%;margin-top:8px;padding:8px 10px;border:1.5px solid #ddd;border-radius:6px;font-size:13px;font-family:inherit;outline:none">
+      <button class="btn btn-primary btn-sm" onclick="saveRestKey()" style="margin-top:8px">Simpan REST Key</button>
+    </div>`
+  ].join('');
+}
+
+function saveRestKey() {
+  const key = (document.getElementById('os-rest-key-input') || {}).value || '';
+  if (!key.trim()) { toast('Sila masukkan REST API Key'); return; }
+  localStorage.setItem('os_rest_key', key.trim());
+  toast('✅ REST API Key disimpan!');
+  renderSysStatus();
+}
+
+async function clearAllData() {
+  if (!confirm('Padam SEMUA data? Tindakan ini tidak boleh dibatalkan.')) return;
+  try {
+    const tx = DB.transaction(['posts','media'], 'readwrite');
+    tx.objectStore('posts').clear();
+    tx.objectStore('media').clear();
+    localStorage.clear();
+    posts = []; groups = [];
+    renderDashboard(); renderGroups(); renderGroupCheckboxes();
+    toast('🗑 Semua data dipadam');
+  } catch(e) { toast('Gagal padam data'); }
+}
+
+
+// ================================================================
+// NAVIGATION
+// ================================================================
+function showPage(id) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.getElementById('page-' + id).classList.add('active');
+  document.querySelectorAll('nav button').forEach((b,i) => {
+    b.classList.remove('active');
+    if (['dashboard','create','groups','log','settings'][i] === id) b.classList.add('active');
+  });
+  if (id === 'dashboard') renderDashboard();
+  if (id === 'groups')    { renderGroups(); renderGroupCheckboxes(); }
+  if (id === 'create')    renderGroupCheckboxes();
+  if (id === 'log')       renderLog();
+}
+
+// ================================================================
+// FILE UPLOAD
+// ================================================================
+function triggerFile() {
+  if (document.getElementById('file-drop').classList.contains('uploading')) return;
+  document.getElementById('file-input').click();
+}
+
+function handleFile(input) {
+  const file = input.files[0];
+  if (!file) return;
+
+  const drop     = document.getElementById('file-drop');
+  const dropText = document.getElementById('file-drop-text');
+  const progBar  = document.getElementById('prog-bar');
+  const progFill = document.getElementById('prog-fill');
+
+  drop.classList.add('uploading');
+  progBar.style.display = 'block';
+  progFill.style.width  = '0%';
+  dropText.innerHTML    = '⏳ Sedang memuat naik fail...';
+
+  let fakePct = 0;
+  const ticker = setInterval(() => {
+    fakePct = Math.min(fakePct + Math.random() * 12, 88);
+    progFill.style.width = fakePct + '%';
+  }, 150);
+
+  const reader = new FileReader();
+  reader.onload = async (e) => {
+    clearInterval(ticker);
+    progFill.style.width = '100%';
+    const blob = new Blob([e.target.result], { type: file.type });
+    pendingMedia = { name: file.name, type: file.type, blob };
+
+    await new Promise(r => setTimeout(r, 300));
+    drop.classList.remove('uploading');
+    progBar.style.display = 'none';
+
+    const isVid  = file.type.startsWith('video');
+    const sizeTxt = file.size > 1048576 ? (file.size/1048576).toFixed(1)+'MB' : Math.round(file.size/1024)+'KB';
+    dropText.innerHTML = (isVid?'🎬':'🖼️') + ' <strong>' + esc(file.name) + '</strong> (' + sizeTxt + ')<br><small style="font-size:12px;opacity:.7;font-weight:400">Klik untuk tukar</small>';
+
+    const url  = URL.createObjectURL(blob);
+    const prev = document.getElementById('file-preview');
+    prev.innerHTML = isVid
+      ? '<video src="'+url+'" style="width:100%;max-width:280px;height:150px;border-radius:8px;margin-top:8px;object-fit:cover;display:block" controls muted playsinline></video>'
+      : '<img src="'+url+'" style="max-width:280px;max-height:150px;border-radius:8px;margin-top:8px;object-fit:cover;display:block">';
+    toast('✅ Fail berjaya dimuatnaik!');
+  };
+  reader.onerror = () => {
+    clearInterval(ticker);
+    drop.classList.remove('uploading');
+    progBar.style.display = 'none';
+    dropText.innerHTML = '📎 Klik untuk pilih video/gambar';
+    toast('❌ Gagal baca fail. Cuba lagi.');
+  };
+  reader.readAsArrayBuffer(file);
+  input.value = '';
+}
+
+// ================================================================
+// SAVE POST
+// ================================================================
+async function savePost() {
+  const title = document.getElementById('post-title').value.trim();
+  const copy  = document.getElementById('post-copy').value.trim();
+  const date  = document.getElementById('post-date').value;
+  const time  = document.getElementById('post-time').value;
+  const sel   = [...document.querySelectorAll('#group-checkboxes input:checked')].map(cb => cb.value);
+
+  if (!copy)          { toast('⚠️ Sila masukkan copywriting'); return; }
+  if (!date || !time) { toast('⚠️ Sila pilih tarikh dan masa'); return; }
+  if (!sel.length)    { toast('⚠️ Sila pilih sekurang-kurangnya 1 kumpulan'); return; }
+
+  const btn = document.getElementById('save-btn');
+  btn.disabled = true; btn.textContent = '⏳ Menyimpan...';
+
+  const id   = Date.now();
+  const post = {
+    id, title: title || 'Posting '+date, copy, date, time,
+    groups: sel,
+    hasMedia:  !!pendingMedia,
+    mediaName: pendingMedia?.name || null,
+    mediaType: pendingMedia?.type || null,
+    status: 'scheduled',
+    createdAt: new Date().toISOString()
+  };
+
+  try {
+    await dbPut('posts', post);
+    if (pendingMedia) {
+      await dbPut('media', { id, blob: pendingMedia.blob, name: pendingMedia.name, type: pendingMedia.type });
+    }
+    posts.push(post);
+    posts.sort((a,b) => (a.date+a.time).localeCompare(b.date+b.time));
+
+    // Schedule notification
+    if (osReady) await sendOSNotification(post);
+    else storeScheduledNotif({ post, fireAt: new Date(new Date(date+'T'+time).getTime() - getNotifMins()*60000), grpStr: '' });
+
+    clearForm();
+    toast('✅ Jadual berjaya disimpan!');
+    showPage('dashboard');
+  } catch(e) {
+    console.error(e);
+    toast('❌ Gagal simpan. Cuba lagi.');
+  } finally {
+    btn.disabled = false; btn.textContent = '💾 Simpan Jadual';
+  }
+}
+
+function getNotifMins() { return parseInt(localStorage.getItem(NOTIF_MINS_KEY) || '2'); }
+
+function clearForm() {
+  ['post-title','post-copy','post-time'].forEach(id => document.getElementById(id).value = '');
+  document.getElementById('file-preview').innerHTML = '';
+  document.getElementById('file-drop-text').innerHTML = '📎 Klik untuk pilih video/gambar<br><small style="font-size:12px;opacity:.7">MP4, MOV, JPG, PNG</small>';
+  document.getElementById('prog-bar').style.display = 'none';
+  pendingMedia = null;
+  setDefaultDate();
+  document.querySelectorAll('#group-checkboxes input').forEach(cb => cb.checked = false);
+}
+
+function setDefaultDate() {
+  const d = new Date(), p = n => String(n).padStart(2,'0');
+  document.getElementById('post-date').value = d.getFullYear()+'-'+p(d.getMonth()+1)+'-'+p(d.getDate());
+}
+
+// ================================================================
+// GROUPS
+// ================================================================
+function addGroup() {
+  const name = document.getElementById('grp-name').value.trim();
+  const url  = document.getElementById('grp-url').value.trim();
+  if (!name || !url) { toast('Sila isi nama dan URL'); return; }
+  if (!url.includes('facebook.com/groups')) { toast('URL mesti URL Facebook Group'); return; }
+  groups.push({ id: Date.now(), name, url });
+  saveGroups(); renderGroups(); renderGroupCheckboxes();
+  document.getElementById('grp-name').value = '';
+  document.getElementById('grp-url').value  = '';
+  toast('✅ Kumpulan ditambah!');
+}
+
+function deleteGroup(id) {
+  if (!confirm('Padam kumpulan ini?')) return;
+  groups = groups.filter(g => g.id !== id);
+  saveGroups(); renderGroups(); renderGroupCheckboxes();
+}
+
+function renderGroups() {
+  const el = document.getElementById('group-list');
+  document.getElementById('grp-count').textContent = groups.length;
+  if (!groups.length) { el.innerHTML = '<div class="empty">Tiada kumpulan lagi</div>'; return; }
+  el.innerHTML = groups.map(g => `
+    <div class="group-item">
+      <div class="group-info">
+        <div class="group-name">${esc(g.name)}</div>
+        <div class="group-url">${esc(g.url)}</div>
+      </div>
+      <div style="display:flex;gap:6px;margin-left:10px;flex-shrink:0">
+        <a href="${esc(g.url)}" target="_blank" class="btn btn-ghost btn-sm" style="text-decoration:none">Buka</a>
+        <button class="btn btn-ghost btn-sm" style="color:var(--danger)" onclick="deleteGroup(${g.id})">🗑</button>
+      </div>
+    </div>`).join('');
+}
+
+function renderGroupCheckboxes() {
+  const el = document.getElementById('group-checkboxes');
+  if (!groups.length) {
+    el.innerHTML = '<div style="color:var(--muted);font-size:13px;padding:8px 0">Tiada kumpulan. <span style="color:var(--blue);cursor:pointer" onclick="showPage(\'groups\')">Tambah →</span></div>';
+    return;
+  }
+  el.innerHTML = groups.map(g => `
+    <label class="checkbox-row">
+      <input type="checkbox" value="${g.id}">
+      <div style="min-width:0">
+        <div style="font-size:14px;font-weight:500">${esc(g.name)}</div>
+        <div style="font-size:12px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(g.url.replace('https://www.facebook.com/groups/','fb/groups/'))}</div>
+      </div>
+    </label>`).join('');
+}
+
+function selAll()  { document.querySelectorAll('#group-checkboxes input').forEach(cb => cb.checked = true);  }
+function selNone() { document.querySelectorAll('#group-checkboxes input').forEach(cb => cb.checked = false); }
+
+function importCSV(input) {
+  const file = input.files[0]; if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    const lines = e.target.result.split('\n').filter(l => l.trim());
+    let added = 0;
+    lines.slice(1).forEach(line => {
+      const cols = line.split(',').map(c => c.replace(/^"|"$/g,'').trim());
+      const [name, url] = cols;
+      if (name && url && url.includes('facebook.com/groups') && !groups.find(g => g.url === url)) {
+        groups.push({ id: Date.now() + Math.random(), name, url }); added++;
+      }
+    });
+    saveGroups(); renderGroups(); renderGroupCheckboxes();
+    toast('✅ ' + added + ' kumpulan diimport');
+  };
+  reader.readAsText(file); input.value = '';
+}
+
+// ================================================================
+// DASHBOARD
+// ================================================================
+function renderDashboard() {
+  const today = todayStr();
+  const now   = new Date();
+  const todayPosts    = posts.filter(p => p.date === today).sort((a,b) => a.time.localeCompare(b.time));
+  const upcomingPosts = posts.filter(p => p.date > today).sort((a,b) => (a.date+a.time).localeCompare(b.date+b.time)).slice(0,15);
+  const donePosts     = posts.filter(p => new Date(p.date+'T'+p.time) < now);
+
+  document.getElementById('stat-today').textContent    = todayPosts.length;
+  document.getElementById('stat-upcoming').textContent = upcomingPosts.length;
+  document.getElementById('stat-done').textContent     = donePosts.length;
+  document.getElementById('stat-groups').textContent   = groups.length;
+
+  renderPostList('today-list',    todayPosts,    true);
+  renderPostList('upcoming-list', upcomingPosts, false);
+}
+
+function renderPostList(elId, list, showStatus) {
+  const el  = document.getElementById(elId);
+  if (!list.length) { el.innerHTML = '<div class="empty">Tiada jadual</div>'; return; }
+  const now = new Date();
+  el.innerHTML = list.map(p => {
+    const grpNames   = p.groups.map(gid => { const g = groups.find(x=>x.id==gid); return g?g.name:'?'; });
+    const isPast     = new Date(p.date+'T'+p.time) < now;
+    const statusBadge = showStatus
+      ? (isPast ? '<span class="badge badge-orange">Lepas</span>' : '<span class="badge badge-blue">Dijadual</span>')
+      : '<span class="badge badge-gray">'+p.date+'</span>';
+    return `<div class="schedule-item" onclick="openPost(${p.id})">
+      <div class="meta">
+        <span class="time-big">${p.time}</span>
+        ${statusBadge}
+        ${p.hasMedia ? '<span class="badge badge-green">📎</span>' : ''}
+      </div>
+      <div class="title-text">${esc(p.title)}</div>
+      <div class="copy-prev">${esc(p.copy)}</div>
+      <div style="margin-top:6px;display:flex;gap:5px;flex-wrap:wrap">
+        ${grpNames.slice(0,3).map(n=>`<span style="font-size:11px;background:#e7f0fd;color:var(--blue);padding:2px 8px;border-radius:20px">${esc(n)}</span>`).join('')}
+        ${grpNames.length>3 ? `<span style="font-size:11px;color:var(--muted)">+${grpNames.length-3} lagi</span>` : ''}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ================================================================
+// LOG
+// ================================================================
+function renderLog() {
+  const el          = document.getElementById('log-list');
+  const filterMonth = document.getElementById('log-month').value;
+  const now         = new Date();
+
+  let logPosts = posts
+    .filter(p => new Date(p.date+'T'+p.time) < now)
+    .sort((a,b) => (b.date+b.time).localeCompare(a.date+a.time));
+
+  if (filterMonth) logPosts = logPosts.filter(p => p.date.startsWith(filterMonth));
+
+  if (!logPosts.length) { el.innerHTML = '<div class="empty">Tiada rekod log' + (filterMonth?' untuk bulan ini':'') + '</div>'; return; }
+
+  const byDate = {};
+  logPosts.forEach(p => { if (!byDate[p.date]) byDate[p.date]=[]; byDate[p.date].push(p); });
+
+  let html = '';
+  Object.keys(byDate).sort().reverse().forEach(date => {
+    const d = new Date(date+'T12:00:00');
+    html += `<div style="font-size:12px;font-weight:600;color:var(--muted);padding:10px 2px 6px;letter-spacing:.5px">${d.toLocaleDateString('ms-MY',{weekday:'long',day:'numeric',month:'long',year:'numeric'}).toUpperCase()}</div>`;
+    byDate[date].forEach(p => {
+      const grpNames = p.groups.map(gid => { const g=groups.find(x=>x.id==gid); return g?g.name:'?'; });
+      html += `<div class="log-item">
+        <div class="log-meta">
+          <span style="font-size:18px;font-weight:700;color:var(--muted)">${p.time}</span>
+          ${p.hasMedia ? '<span class="badge badge-green">📎 Media</span>' : ''}
+          <span class="badge badge-gray">${p.groups.length} kumpulan</span>
+        </div>
+        <div class="log-title">${esc(p.title)}</div>
+        <div class="log-copy">${esc(p.copy)}</div>
+        <div style="margin-top:6px;display:flex;gap:5px;flex-wrap:wrap">
+          ${grpNames.slice(0,4).map(n=>`<span style="font-size:11px;background:#f0f0f0;color:#555;padding:2px 8px;border-radius:20px">${esc(n)}</span>`).join('')}
+          ${grpNames.length>4?`<span style="font-size:11px;color:var(--muted)">+${grpNames.length-4} lagi</span>`:''}
+        </div>
+        <div class="log-actions">
+          <button class="btn btn-ghost btn-sm" onclick="openPost(${p.id})">👁 Lihat</button>
+          <button class="btn btn-ghost btn-sm" onclick="dupFromLog(${p.id})">📋 Duplikasi & Jadual Semula</button>
+          <button class="btn btn-primary btn-sm" onclick="quickCopy(${p.id})">📋 Salin Copy</button>
+        </div>
+      </div>`;
+    });
+  });
+  el.innerHTML = html;
+}
+
+async function dupFromLog(id) {
+  const post = posts.find(p => p.id === id);
+  if (!post) return;
+  document.getElementById('post-title').value = post.title + ' (semula)';
+  document.getElementById('post-copy').value  = post.copy;
+  showPage('create');
+  await new Promise(r => setTimeout(r,150));
+  post.groups.forEach(gid => {
+    const cb = document.querySelector(`#group-checkboxes input[value="${gid}"]`);
+    if (cb) cb.checked = true;
+  });
+  if (post.hasMedia) {
+    try {
+      const media = await dbGet('media', id);
+      if (media) {
+        pendingMedia = { name: media.name, type: media.type, blob: media.blob };
+        const url   = URL.createObjectURL(media.blob);
+        const isVid = media.type.startsWith('video');
+        document.getElementById('file-drop-text').innerHTML = (isVid?'🎬':'🖼️') + ' <strong>'+esc(media.name)+'</strong> (dari rekod lama)';
+        const prev = document.getElementById('file-preview');
+        prev.innerHTML = isVid
+          ? '<video src="'+url+'" style="width:100%;max-width:280px;height:150px;border-radius:8px;margin-top:8px;object-fit:cover;display:block" controls muted playsinline></video>'
+          : '<img src="'+url+'" style="max-width:280px;max-height:150px;border-radius:8px;margin-top:8px;object-fit:cover;display:block">';
+      }
+    } catch(e) {}
+  }
+  toast('✅ Posting disalin. Tetapkan masa baru dan simpan.');
+}
+
+function quickCopy(id) {
+  const post = posts.find(p => p.id === id); if (!post) return;
+  navigator.clipboard.writeText(post.copy)
+    .then(()=>toast('✅ Copywriting disalin!'))
+    .catch(()=>{ const ta=document.createElement('textarea');ta.value=post.copy;document.body.appendChild(ta);ta.select();document.execCommand('copy');document.body.removeChild(ta);toast('✅ Copywriting disalin!'); });
+}
+
+// ================================================================
+// SETTINGS
+// ================================================================
+function saveNotifMins() {
+  const v = document.getElementById('notif-mins').value;
+  localStorage.setItem(NOTIF_MINS_KEY, v);
+  toast('✅ Disimpan — notifikasi akan dihantar ' + v + ' minit awal');
+}
+
+function exportData() {
+  const data = JSON.stringify({ posts, groups, exported: new Date().toISOString() }, null, 2);
+  const a = document.createElement('a');
+  a.href = 'data:application/json;charset=utf-8,' + encodeURIComponent(data);
+  a.download = 'postjadual-backup-' + todayStr() + '.json';
+  a.click();
+  toast('✅ Data diexport!');
+}
+
+async function clearAllPosts() {
+  if (!confirm('Padam SEMUA jadual? Tindakan ini tidak boleh dibuat alik.')) return;
+  for (const p of posts) {
+    await dbDel('posts', p.id).catch(()=>{});
+    await dbDel('media', p.id).catch(()=>{});
+    cancelScheduledNotif(p.id);
+  }
+  posts = [];
+  renderDashboard();
+  toast('🗑 Semua jadual dipadam');
+}
+
+// ================================================================
+// MODAL
+// ================================================================
+async function openPost(id) {
+  const post = posts.find(p => p.id === id); if (!post) return;
+  activePostId = id;
+  document.getElementById('modal-title').textContent = post.title;
+  document.getElementById('modal-time').textContent  = post.date + ' • ' + post.time;
+  document.getElementById('modal-copy').textContent  = post.copy;
+
+  const postGroups = post.groups.map(gid => groups.find(x=>x.id==gid)).filter(Boolean);
+  document.getElementById('modal-grp-count').textContent = postGroups.length;
+  document.getElementById('modal-groups').innerHTML = postGroups.map(g => `
+    <a href="${esc(g.url)}" target="_blank" style="display:flex;align-items:center;justify-content:space-between;padding:10px;border:1px solid var(--border);border-radius:8px;margin-bottom:6px;text-decoration:none;color:var(--text)">
+      <span style="font-size:14px;font-weight:500">${esc(g.name)}</span>
+      <span style="font-size:13px;color:var(--blue);flex-shrink:0;margin-left:8px">Buka FB →</span>
+    </a>`).join('');
+
+  const mSec = document.getElementById('modal-media-section');
+  if (post.hasMedia) {
+    mSec.style.display = 'block';
+    try {
+      const media = await dbGet('media', id);
+      if (media) {
+        const url  = URL.createObjectURL(media.blob);
+        const prev = document.getElementById('modal-media-preview');
+        prev.innerHTML = media.type.startsWith('video')
+          ? '<video src="'+url+'" style="width:100%;max-height:160px;border-radius:8px;object-fit:cover" controls muted playsinline></video>'
+          : '<img src="'+url+'" style="max-width:100%;max-height:120px;border-radius:8px;object-fit:cover">';
+      }
+    } catch(e) { document.getElementById('modal-media-preview').innerHTML = ''; }
+  } else {
+    mSec.style.display = 'none';
+  }
+
+  document.getElementById('modal-backdrop').style.display = 'block';
+  document.body.style.overflow = 'hidden';
+}
+
+function closeModal() {
+  document.getElementById('modal-backdrop').style.display = 'none';
+  document.body.style.overflow = '';
+  activePostId = null;
+}
+
+function copyCopy() {
+  const post = posts.find(p => p.id === activePostId); if (!post) return;
+  navigator.clipboard.writeText(post.copy)
+    .then(()=>toast('✅ Copywriting disalin!'))
+    .catch(()=>{ const ta=document.createElement('textarea');ta.value=post.copy;document.body.appendChild(ta);ta.select();document.execCommand('copy');document.body.removeChild(ta);toast('✅ Copywriting disalin!'); });
+}
+
+async function downloadMedia() {
+  const post = posts.find(p => p.id === activePostId);
+  if (!post?.hasMedia) return;
+  try {
+    const media = await dbGet('media', post.id);
+    if (!media) { toast('❌ Fail media tidak dijumpai'); return; }
+    const url = URL.createObjectURL(media.blob);
+    const a   = document.createElement('a'); a.href = url; a.download = media.name; a.click();
+    setTimeout(() => URL.revokeObjectURL(url), 5000);
+    toast('⬇️ Media sedang didownload...');
+  } catch(e) { toast('❌ Gagal download media'); }
+}
+
+async function duplicatePost() {
+  if (!activePostId) return;
+  const id = activePostId; closeModal();
+  await dupFromLog(id);
+}
+
+async function deletePost() {
+  if (!confirm('Padam jadual ini?')) return;
+  cancelScheduledNotif(activePostId);
+  await dbDel('posts', activePostId).catch(()=>{});
+  await dbDel('media', activePostId).catch(()=>{});
+  posts = posts.filter(p => p.id !== activePostId);
+  closeModal(); renderDashboard();
+  toast('🗑 Jadual dipadam');
+}
+
+// ================================================================
+// UTILS
+// ================================================================
+function checkPWA() {
+  const standalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
+  const isIOS      = /iphone|ipad|ipod/i.test(navigator.userAgent);
+  if (isIOS && !standalone) document.getElementById('banner-pwa').style.display = 'block';
+}
+
+function startMinuteTick() {
+  setInterval(async () => {
+    const now = new Date(); let changed = false;
+    for (const p of posts) {
+      if (p.status === 'scheduled' && new Date(p.date+'T'+p.time) < now) {
+        p.status = 'done'; await dbPut('posts', p).catch(()=>{}); changed = true;
+      }
+    }
+    if (changed) renderDashboard();
+  }, 30000);
+}
+
+function handleURLParams() {
+  const params = new URLSearchParams(location.search);
+  const openId = params.get('openPost');
+  if (openId) {
+    setTimeout(() => openPost(Number(openId)), 800);
+    history.replaceState({}, '', location.pathname);
+  }
+}
+
+// Listen to SW messages (when notification is tapped)
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.addEventListener('message', e => {
+    if (e.data?.type === 'OPEN_POST') openPost(e.data.postId);
+  });
+}
+
+function saveGroups() { localStorage.setItem('fb_groups', JSON.stringify(groups)); }
+function todayStr()   { const d=new Date(),p=n=>String(n).padStart(2,'0'); return d.getFullYear()+'-'+p(d.getMonth()+1)+'-'+p(d.getDate()); }
+function esc(s)       { const d=document.createElement('div');d.textContent=s||'';return d.innerHTML; }
+function toast(msg, dur=3200) { const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),dur); }
+
+document.getElementById('modal-backdrop').addEventListener('click', e => {
+  if (e.target === document.getElementById('modal-backdrop')) closeModal();
+});
+</script>
+</body>
+</html>
