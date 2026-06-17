@@ -457,162 +457,234 @@ async function init() {
 
 document.addEventListener('DOMContentLoaded', init);
 
-// ================================================================
-// ONESIGNAL
-// ================================================================
+// ============================================================
+// ONESIGNAL — load SDK secara dinamik
+// ============================================================
+function loadOneSignalSDK() {
+  return new Promise((resolve, reject) => {
+    if (window.OneSignal && window.OneSignalDeferred) { resolve(); return; }
+    const script = document.createElement('script');
+    script.src = 'https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js';
+    script.async = true;
+    script.onload  = () => resolve();
+    script.onerror = () => reject(new Error('SDK gagal dimuatkan. Semak sambungan internet.'));
+    document.head.appendChild(script);
+  });
+}
+
 async function initOneSignal() {
-  const appId = localStorage.getItem(OS_APP_ID_KEY);
-  const statusEl = document.getElementById('os-status');
+  const appId = localStorage.getItem('os_app_id') || '';
+  const isConfigured = appId.length > 20 && appId.includes('-');
 
-  if (!appId || appId === 'PASTE_YOUR_ONESIGNAL_APP_ID_HERE') {
-    document.getElementById('banner-setup').style.display = 'block';
-    setOSStatus('warn', '⚠️ OneSignal App ID belum diisi. Pergi ke tab ⚙️ Tetapan untuk setup.');
+  if (!isConfigured) {
+    document.getElementById('setup-banner').style.display = 'block';
+    updateNotifBanner('unconfigured');
     return;
   }
-
-  if (typeof OneSignalDeferred === 'undefined') {
-    setOSStatus('err', '❌ OneSignal SDK gagal dimuatkan. Semak sambungan internet.');
-    return;
-  }
+  document.getElementById('setup-banner').style.display = 'none';
+  updateNotifBanner('loading');
 
   try {
+    await loadOneSignalSDK();
     window.OneSignalDeferred = window.OneSignalDeferred || [];
-    await new Promise(res => {
-      OneSignalDeferred.push(async (os) => {
-        await os.init({
+    OneSignalDeferred.push(async (OS) => {
+      try {
+        await OS.init({
           appId: appId,
-          safari_web_id: 'web.onesignal.auto.' + appId, // auto safari ID
           notifyButton: { enable: false },
-          allowLocalhostAsSecureOrigin: false,
+          allowLocalhostAsSecureOrigin: true,
+          serviceWorkerParam: { scope: '/' },
         });
-        osReady = true;
-
-        const isSubscribed = await os.User.PushSubscription.optedIn;
-        if (isSubscribed) {
-          setOSStatus('ok', '✅ Notifikasi lock screen aktif! OneSignal bersedia.');
-          document.getElementById('banner-notif').textContent = '✅ Notifikasi lock screen aktif — peringatan akan muncul walaupun phone berkunci.';
-          document.getElementById('banner-notif').style.display = 'block';
-          document.getElementById('banner-setup').style.display = 'none';
-          document.getElementById('os-subscribe-section').style.display = 'none';
-        } else {
-          setOSStatus('warn', '🔔 OneSignal bersedia. Klik butang di bawah untuk aktifkan notifikasi lock screen.');
-          document.getElementById('os-subscribe-section').style.display = 'block';
+        osInitialized = true;
+        const isSubscribed = OS.User.PushSubscription.optedIn;
+        updateNotifBanner(isSubscribed ? 'subscribed' : 'notsubscribed');
+        renderSysStatus();
+        if (!isSubscribed) {
+          setTimeout(() => { try { OS.Slidedown.promptPush(); } catch(e) {} }, 1500);
         }
-        res();
-      });
-    });
-  } catch(e) {
-    console.error('OneSignal init error', e);
-    setOSStatus('err', '❌ Ralat init OneSignal: ' + e.message);
-  }
-}
-
-function setOSStatus(type, msg) {
-  const el = document.getElementById('os-status');
-  el.className = 'banner banner-' + (type === 'ok' ? 'ok' : type === 'warn' ? 'warn' : 'err');
-  el.textContent = msg;
-}
-
-async function subscribeOneSignal() {
-  if (!osReady) { toast('OneSignal belum bersedia. Cuba reload.'); return; }
-  try {
-    OneSignalDeferred.push(async (os) => {
-      await os.User.PushSubscription.optIn();
-      const isSubscribed = await os.User.PushSubscription.optedIn;
-      if (isSubscribed) {
-        setOSStatus('ok', '✅ Notifikasi lock screen aktif!');
-        document.getElementById('banner-notif').textContent = '✅ Notifikasi lock screen aktif — peringatan akan muncul walaupun phone berkunci.';
-        document.getElementById('banner-notif').style.display = 'block';
-        document.getElementById('banner-setup').style.display = 'none';
-        document.getElementById('os-subscribe-section').style.display = 'none';
-        toast('✅ Notifikasi lock screen diaktifkan!');
+        OS.User.PushSubscription.addEventListener('change', () => {
+          updateNotifBanner(OS.User.PushSubscription.optedIn ? 'subscribed' : 'notsubscribed');
+          renderSysStatus();
+        });
+      } catch(e) {
+        console.error('OS.init error:', e);
+        updateNotifBanner('error', e.message);
       }
     });
   } catch(e) {
-    toast('❌ Gagal subscribe: ' + e.message);
+    console.error('SDK load error:', e);
+    updateNotifBanner('error', e.message);
   }
+}
+
+function updateNotifBanner(state, msg) {
+  const el = document.getElementById('notif-status');
+  el.style.display = 'block';
+  el.className = 'notif-banner';
+  const map = {
+    unconfigured:  ['notif-warn', '⚠️ Notifikasi lock screen belum aktif. <button class="btn btn-primary btn-sm" onclick="showPage('settings')" style="margin-left:6px">Setup Sekarang →</button>'],
+    loading:       ['notif-warn', '⏳ Memuat OneSignal SDK...'],
+    subscribed:    ['notif-ok',   '✅ Notifikasi lock screen aktif — keluar di lock screen walaupun phone dikunci!'],
+    notsubscribed: ['notif-warn', '🔔 OneSignal bersedia. <button class="btn btn-primary btn-sm" onclick="subscribeOS()" style="margin-left:6px">Aktifkan Notifikasi</button>'],
+    error:         ['notif-err',  '❌ OneSignal gagal: ' + (msg || 'semak App ID dan cuba reload')],
+  };
+  const [cls, html] = map[state] || map.error;
+  el.classList.add(cls);
+  el.innerHTML = html;
+}
+
+function subscribeOS() {
+  if (!window.OneSignalDeferred) { toast('OneSignal belum dimuatkan'); return; }
+  OneSignalDeferred.push(async (OS) => {
+    try { await OS.Slidedown.promptPush(); }
+    catch(e) { toast('Gagal — cuba reload app'); }
+  });
 }
 
 function saveOSAppId() {
-  const val = document.getElementById('os-app-id').value.trim();
-  if (!val) { toast('Sila masukkan App ID'); return; }
-  if (val.length < 30) { toast('App ID tidak sah — semak semula'); return; }
-  localStorage.setItem(OS_APP_ID_KEY, val);
-  toast('✅ App ID disimpan. Memuatkan OneSignal...');
-  setTimeout(() => location.reload(), 1000);
+  const id = document.getElementById('os-app-id').value.trim();
+  if (!id)             { toast('Sila masukkan App ID'); return; }
+  if (id.length < 20)  { toast('App ID terlalu pendek — semak semula'); return; }
+  if (!id.includes('-')){ toast('Format App ID tidak betul (perlu ada tanda -)'); return; }
+  localStorage.setItem('os_app_id', id);
+  document.getElementById('os-status').innerHTML = '<span style="color:green">✅ Disimpan. Memuat semula...</span>';
+  setTimeout(() => location.reload(), 1200);
 }
 
-// ----------------------------------------------------------------
-// Send notification via OneSignal REST API (server-side via fetch)
-// This queues a notification to be delivered by OneSignal servers
-// to THIS device only, using the external_id tag we set
-// ----------------------------------------------------------------
-async function sendOSNotification(post) {
-  const appId = localStorage.getItem(OS_APP_ID_KEY);
-  if (!appId || !osReady) return;
+function testNotif() {
+  toast('Pergi ke onesignal.com → Messages → New Push → Send to Test Device');
+}
 
-  const mins = parseInt(localStorage.getItem(NOTIF_MINS_KEY) || '2');
-  const postDt = new Date(post.date + 'T' + post.time);
-  const fireAt = new Date(postDt.getTime() - mins * 60 * 1000);
-  const now    = new Date();
+// ============================================================
+// SCHEDULE NOTIFICATION via OneSignal REST API
+// ============================================================
+async function scheduleOSNotification(post) {
+  const restKey = localStorage.getItem('os_rest_key');
+  const appId   = localStorage.getItem('os_app_id') || '';
+  if (!restKey || !appId) return;
 
-  if (fireAt <= now) return; // already past
-
-  // Get OneSignal Player ID for this device
-  let playerId = null;
-  await new Promise(res => {
-    OneSignalDeferred.push(async (os) => {
-      playerId = os.User.PushSubscription.id;
-      res();
-    });
-  });
-
-  if (!playerId) return;
+  const offset  = parseInt(document.getElementById('notif-offset')?.value || '5');
+  const postDt  = new Date(post.date + 'T' + post.time);
+  const fireAt  = new Date(postDt.getTime() - offset * 60000);
+  if (fireAt <= new Date()) return;
 
   const grpNames = post.groups
     .map(gid => { const g = groups.find(x => x.id == gid); return g ? g.name : ''; })
-    .filter(Boolean).slice(0,2);
-  const grpStr = grpNames.join(', ') + (post.groups.length > 2 ? ' +' + (post.groups.length-2) + ' lagi' : '');
+    .filter(Boolean).slice(0,2).join(', ');
 
-  // Store scheduled notification locally — OneSignal free tier doesn't have
-  // scheduled push API, so we use SW alarm as fallback + OS for immediate
-  storeScheduledNotif({ post, fireAt, playerId, grpStr });
-}
-
-// ----------------------------------------------------------------
-// Store notifications in localStorage for SW to fire
-// SW will check every minute and trigger when time comes
-// ----------------------------------------------------------------
-function storeScheduledNotif({ post, fireAt, grpStr }) {
-  const schedules = JSON.parse(localStorage.getItem('os_schedules') || '{}');
-  schedules[post.id] = {
-    id:        post.id,
-    title:     post.title,
-    time:      post.time,
-    date:      post.date,
-    grpStr:    grpStr || post.groups.length + ' kumpulan',
-    fireAt:    fireAt.getTime(),
-    sent:      false
-  };
-  localStorage.setItem('os_schedules', JSON.stringify(schedules));
-
-  // Tell SW to schedule
-  if (navigator.serviceWorker && navigator.serviceWorker.controller) {
-    navigator.serviceWorker.controller.postMessage({
-      type:    'SCHEDULE_NOTIF',
-      payload: schedules[post.id]
+  try {
+    const res = await fetch('https://onesignal.com/api/v1/notifications', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Basic ' + restKey },
+      body: JSON.stringify({
+        app_id: appId,
+        included_segments: ['Subscribed Users'],
+        headings: { en: '📅 Masa Posting Hampir Tiba!' },
+        contents: { en: post.title + '\n⏰ ' + post.time + (grpNames ? ' — ' + grpNames : '') },
+        send_after: fireAt.toUTCString(),
+        url: location.origin + location.pathname + '?openPost=' + post.id,
+        web_push_topic: 'post-' + post.id,
+        priority: 10,
+        ttl: 3600,
+      })
     });
+    const data = await res.json();
+    if (data.id) {
+      const ids = JSON.parse(localStorage.getItem('os_notif_ids') || '{}');
+      ids[post.id] = data.id;
+      localStorage.setItem('os_notif_ids', JSON.stringify(ids));
+    } else {
+      console.warn('OS schedule response:', data);
+    }
+  } catch(e) {
+    console.error('OS schedule error:', e);
   }
 }
 
-function cancelScheduledNotif(postId) {
-  const schedules = JSON.parse(localStorage.getItem('os_schedules') || '{}');
-  delete schedules[postId];
-  localStorage.setItem('os_schedules', JSON.stringify(schedules));
-  if (navigator.serviceWorker && navigator.serviceWorker.controller) {
-    navigator.serviceWorker.controller.postMessage({ type:'CANCEL_NOTIF', id: postId });
-  }
+async function cancelOSNotification(postId) {
+  const restKey = localStorage.getItem('os_rest_key');
+  const appId   = localStorage.getItem('os_app_id') || '';
+  const ids     = JSON.parse(localStorage.getItem('os_notif_ids') || '{}');
+  const notifId = ids[postId];
+  if (!restKey || !appId || !notifId) return;
+  try {
+    await fetch('https://onesignal.com/api/v1/notifications/' + notifId + '?app_id=' + appId, {
+      method: 'DELETE', headers: { 'Authorization': 'Basic ' + restKey }
+    });
+    delete ids[postId];
+    localStorage.setItem('os_notif_ids', JSON.stringify(ids));
+  } catch(e) {}
 }
+
+// ============================================================
+// SETTINGS PAGE
+// ============================================================
+function loadSettingsPage() {
+  const saved = localStorage.getItem('os_app_id') || '';
+  if (saved) document.getElementById('os-app-id').value = saved;
+  renderSysStatus();
+}
+
+function renderSysStatus() {
+  const appId   = localStorage.getItem('os_app_id') || '';
+  const restKey = localStorage.getItem('os_rest_key') || '';
+  const configured = appId.length > 20;
+
+  let subStatus = 'Semak...';
+  try {
+    if (window.OneSignalDeferred && osInitialized) {
+      OneSignalDeferred.push(async (OS) => {
+        const sub = OS.User.PushSubscription.optedIn;
+        subStatus = sub ? '✅ Ya (notifikasi aktif)' : '❌ Belum subscribe';
+        document.getElementById('sys-status').innerHTML = buildSysHTML(configured, subStatus, restKey);
+      });
+    }
+  } catch(e) {}
+
+  document.getElementById('sys-status').innerHTML = buildSysHTML(configured, subStatus, restKey);
+}
+
+function buildSysHTML(configured, subStatus, restKey) {
+  const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
+  const isPWA = window.matchMedia('(display-mode:standalone)').matches || navigator.standalone;
+  const row = (icon, label, val) => `<div style="padding:4px 0">${icon} <strong>${label}:</strong> ${val}</div>`;
+  return [
+    row(configured ? '✅' : '❌', 'OneSignal App ID', configured ? 'Dikonfigurasi' : 'Belum diset'),
+    row(restKey ? '✅' : '⚠️', 'REST API Key', restKey ? 'Ada (notifikasi auto aktif)' : 'Belum diset — notifikasi auto tidak berfungsi'),
+    row('📱', 'Platform', isIOS ? 'iPhone/iPad' : 'Android/Desktop'),
+    row(isPWA ? '✅' : '⚠️', 'PWA Mode', isPWA ? 'Home Screen (betul)' : 'Dalam Safari — tambah ke Home Screen dulu'),
+    `<div style="margin-top:12px;padding:12px;background:#f0f5ff;border-radius:8px;font-size:13px;line-height:1.8">
+      <strong style="color:var(--blue)">REST API Key (untuk notifikasi auto):</strong><br>
+      1. onesignal.com → Settings → Keys & IDs<br>
+      2. Salin <em>REST API Key</em> (bukan App ID)<br>
+      <input type="text" id="os-rest-key-input" placeholder="REST API Key" value="${restKey}"
+        style="width:100%;margin-top:8px;padding:8px 10px;border:1.5px solid #ddd;border-radius:6px;font-size:13px;font-family:inherit;outline:none">
+      <button class="btn btn-primary btn-sm" onclick="saveRestKey()" style="margin-top:8px">Simpan REST Key</button>
+    </div>`
+  ].join('');
+}
+
+function saveRestKey() {
+  const key = (document.getElementById('os-rest-key-input') || {}).value || '';
+  if (!key.trim()) { toast('Sila masukkan REST API Key'); return; }
+  localStorage.setItem('os_rest_key', key.trim());
+  toast('✅ REST API Key disimpan!');
+  renderSysStatus();
+}
+
+async function clearAllData() {
+  if (!confirm('Padam SEMUA data? Tindakan ini tidak boleh dibatalkan.')) return;
+  try {
+    const tx = DB.transaction(['posts','media'], 'readwrite');
+    tx.objectStore('posts').clear();
+    tx.objectStore('media').clear();
+    localStorage.clear();
+    posts = []; groups = [];
+    renderDashboard(); renderGroups(); renderGroupCheckboxes();
+    toast('🗑 Semua data dipadam');
+  } catch(e) { toast('Gagal padam data'); }
+}
+
 
 // ================================================================
 // NAVIGATION
