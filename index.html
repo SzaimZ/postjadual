@@ -245,6 +245,14 @@ details[open] summary{margin-bottom:7px}
     </div>
     <div id="s-token-msg" style="margin-top:8px;font-size:13px"></div>
 
+    <div style="margin-top:14px">
+      <span class="lbl">URL PWA anda (GitHub Pages)</span>
+      <input type="url" id="s-pwa-url" placeholder="https://username.github.io/postjadual">
+      <div style="margin-top:6px;font-size:12px;color:var(--muted)">URL ini digunakan dalam link Telegram. Kosongkan jika sama dengan URL semasa.</div>
+      <button class="btn btn-out btn-sm" onclick="savePwaUrl()" style="margin-top:6px">Simpan URL PWA</button>
+      <div id="s-pwa-msg" style="margin-top:6px;font-size:13px"></div>
+    </div>
+
     <div id="s-chatid-sec" style="margin-top:14px;display:none">
       <span class="lbl">Chat ID (auto-detect atau isi manual)</span>
       <input type="text" id="s-chatid" placeholder="cth: 123456789">
@@ -470,14 +478,14 @@ async function scheduleNotif(post) {
   const fireAt    = new Date(postDt.getTime() - offset*60000);
   if (fireAt <= new Date()) return;
 
-  const grpNames = post.groups
-    .map(gid=>{ const g=groups.find(x=>x.id==gid); return g?g.name:''; })
+  const grpObjs = post.groups
+    .map(gid => groups.find(x => x.id == gid))
     .filter(Boolean);
 
   const appUrl     = getPWAUrl(post.id);
-  const msg        = buildTGMsg(post, grpNames, appUrl);
-  const remind1Msg = buildReminderMsg(post, grpNames, appUrl, '⏰ <b>Peringatan!</b>');
-  const remind2Msg = buildReminderMsg(post, grpNames, appUrl, '🚨 <b>Peringatan Kedua!</b>');
+  const msg        = buildTGMsg(post, grpObjs, appUrl);
+  const remind1Msg = buildReminderMsg(post, grpObjs, appUrl, '⏰ <b>Peringatan!</b>');
+  const remind2Msg = buildReminderMsg(post, grpObjs, appUrl, '🚨 <b>Peringatan Kedua!</b>');
 
   // --- Hantar ke server (jika ada) ---
   if (serverUrl) {
@@ -535,30 +543,52 @@ async function cancelServerNotif(postId) {
   } catch(e) {}
 }
 
-function buildTGMsg(post, grpNames, appUrl) {
-  const grpLines = grpNames.slice(0,5).map((n,i)=>`  ${i+1}. ${n}`).join('\n');
-  const more     = grpNames.length > 5 ? `\n  ...dan ${grpNames.length-5} lagi` : '';
+function buildTGMsg(post, grpObjs, appUrl) {
+  // Group links — user boleh tap terus dari Telegram ke Facebook
+  const grpLinks = grpObjs.slice(0,10).map((g,i) =>
+    `  ${i+1}. <a href="${g.url}">${escTG(g.name)}</a>`
+  ).join('\n');
+  const more = grpObjs.length > 10 ? `\n  ...dan ${grpObjs.length-10} lagi` : '';
+
+  // Copywriting dalam <code> — dalam Telegram, tap & hold = copy terus
+  const copy    = escTG(post.copy.substring(0, 800));
+  const copyMore = post.copy.length > 800 ? '\n...(teks penuh dalam app)' : '';
+
   return `📅 <b>Masa Posting Hampir Tiba!</b>
 
 📌 <b>${escTG(post.title)}</b>
 ⏰ ${post.date} • ${post.time}
 
-👥 <b>Kumpulan (${grpNames.length}):</b>
-${grpLines}${more}
+━━━━━━━━━━━━━━
+📋 <b>COPYWRITING</b>
+(Tekan &amp; tahan teks di bawah → Copy):
 
-📋 <b>Copywriting:</b>
-<code>${escTG(post.copy.substring(0,300))}${post.copy.length>300?'...':''}</code>
+<code>${copy}${copyMore}</code>
 
-👇 <a href="${appUrl}">Buka App → Salin &amp; Post</a>`;
+━━━━━━━━━━━━━━
+👥 <b>KUMPULAN (${grpObjs.length})</b>
+Tap nama untuk buka Facebook:
+
+${grpLinks}${more}
+
+━━━━━━━━━━━━━━
+📲 <a href="${appUrl}">Buka PostJadual</a> (jika perlu download video)`;
 }
 
-function buildReminderMsg(post, grpNames, appUrl) {
-  return `⏰ <b>Peringatan!</b> Posting belum dibuat.
+function buildReminderMsg(post, grpObjs, appUrl, title) {
+  const grpLinks = grpObjs.slice(0,5).map((g,i) =>
+    `  ${i+1}. <a href="${g.url}">${escTG(g.name)}</a>`
+  ).join('\n');
+  const extra = grpObjs.length > 5 ? `\n  ...dan ${grpObjs.length-5} lagi` : '';
+  const hdr = title || '⏰ <b>Peringatan!</b>';
+  return `${hdr} Posting belum selesai!
 
-📌 <b>${escTG(post.title)}</b> (${post.time})
-👥 ${grpNames.length} kumpulan menunggu
+📌 <b>${escTG(post.title)}</b> — ${post.time}
 
-👇 <a href="${appUrl}">Buka App Sekarang</a>`;
+👥 <b>Kumpulan:</b>
+${grpLinks}${extra}
+
+📲 <a href="${appUrl}">Buka PostJadual</a>`;
 }
 
 function escTG(s) {
@@ -627,13 +657,24 @@ function loadSettings() {
   const token     = TG.token;
   const chatId    = TG.chatId;
   const serverUrl = localStorage.getItem('server_url') || '';
+  const pwaUrl    = localStorage.getItem('pwa_url') || '';
   if (token)     document.getElementById('s-token').value  = token;
   if (chatId) {
     document.getElementById('s-chatid').value = chatId;
     document.getElementById('s-chatid-sec').style.display = 'block';
   }
   if (serverUrl) document.getElementById('s-server').value = serverUrl;
+  if (pwaUrl)    document.getElementById('s-pwa-url').value = pwaUrl;
   loadReminderSettings();
+}
+
+function savePwaUrl() {
+  const url = document.getElementById('s-pwa-url').value.trim().replace(/\/+$/, '');
+  if (!url) { localStorage.removeItem('pwa_url'); toast('URL PWA dikosongkan'); return; }
+  if (!url.startsWith('http')) { toast('URL mesti bermula dengan https://'); return; }
+  localStorage.setItem('pwa_url', url);
+  document.getElementById('s-pwa-msg').innerHTML = '<span style="color:green">✅ URL PWA disimpan — link dalam Telegram akan buka URL ini</span>';
+  toast('✅ URL PWA disimpan');
 }
 
 function loadReminderSettings() {
